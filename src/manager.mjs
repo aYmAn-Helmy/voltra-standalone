@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile, unlink } from 'node:fs/promises';
 import { dirname } from 'node:path';
+import { isStandaloneStatus, standaloneDevice } from './standalone.mjs';
 
 export class ApiError extends Error {
   constructor(message, status = 400) { super(message); this.status = status; }
@@ -141,30 +142,110 @@ export class BridgeManager {
     }
     try { return JSON.parse(text); } catch { throw new ApiError('Invalid upstream JSON', 502); }
   }
+
   async status() {
     const sources = await Promise.all(this.bridges.map(async b => {
       try {
         const data = await this.request(b.id, '/api/status');
-        if (!data || !Array.isArray(data.devices)) throw new Error('Invalid bridge status');
-        const snapshot = {
-          ...b, online: true, error: null, lastSyncAt: new Date().toISOString(),
-          commissioning: {
-            commissioned: data.commissioning?.commissioned === true,
-            manualPairingCode: String(data.commissioning?.manualPairingCode ?? '')
-          },
-          devices: data.devices.map(cleanDevice).filter(Boolean)
-        };
+        let snapshot;
+        if (Array.isArray(data?.devices)) {
+          snapshot = {
+            ...b, type: 'matterbridge', online: true, error: null,
+            lastSyncAt: new Date().toISOString(),
+            commissioning: {
+              commissioned: data.commissioning?.commissioned === true,
+              manualPairingCode: String(data.commissioning?.manualPairingCode ?? '')
+            },
+            devices: data.devices.map(cleanDevice).filter(Boolean)
+          };
+        } else if (isStandaloneStatus(data)) {
+          const device = await this.request(b.id, '/api/device');
+          const version = await this.request(b.id, '/api/version').catch(() => null);
+          snapshot = {
+            ...b, type: 'standalone', online: true, error: null,
+            lastSyncAt: new Date().toISOString(), commissioning: null,
+            devices: [standaloneDevice(b, data, device, version)]
+          };
+        } else {
+          throw new Error('Unknown API type. Direct Standalone expects /api/status with state + mac, while MatterBridge expects devices[].');
+        }
         this.cache.set(b.id, snapshot);
         return snapshot;
       } catch (error) {
         const last = this.cache.get(b.id);
         return {
-          ...b, online: false, error: error.message, lastSyncAt: last?.lastSyncAt ?? null,
+          ...b, type: last?.type ?? 'unknown', online: false,
+          error: error.message, lastSyncAt: last?.lastSyncAt ?? null,
           commissioning: last?.commissioning ?? null,
-          devices: (last?.devices ?? []).map(d => ({ ...d, reachable: false }))
+          devices: (last?.devices ?? []).map(d => ({ ...d, reachable: false, controlAvailable: false }))
         };
       }
     }));
     return aggregate(sources);
+  }
+
+  async sourceForDevice(bridgeId, deviceId) {
+    let source = this.cache.get(bridgeId);
+    if (!source) {
+      await this.status();
+      source = this.cache.get(bridgeId);
+    }
+    if (!source || !source.devices.some(d => d.id === deviceId)) {
+      throw new ApiError('Device not registered on this source', 404);
+    }
+    return source;
+  }
+
+  async refreshDevice(bridgeId, deviceId) {
+    const source = await this.sourceForDevice(bridgeId, deviceId);
+    if (source.type === 'standalone') return this.request(bridgeId, '/api/device');
+    return this.request(bridgeId, '/devices/' + encodeURIComponent(deviceId) + '/refresh',
+      { method: 'POST', body: {} });
+  }
+
+  async removeDevice(bridgeId, deviceId) {
+    const source = await this.sourceForDevice(bridgeId, deviceId);
+    if (source.type === 'standalone') {
+      throw new ApiError('Remove this Standalone strip from the source list instead.');
+    }
+    return this.request(bridgeId, '/devices/' + encodeURIComponent(deviceId), { method: 'DELETE' });
+  }
+
+  async setOutlet(bridgeId, deviceId, index, on) {
+    const source = await this.sourceForDevice(bridgeId, deviceId);
+    if (source.type !== 'standalone') {
+      return this.request(bridgeId, '/devices/' + encodeURIComponent(deviceId) +
+        '/outlets/' + index + '/state', { method: 'POST', body: { on } });
+    }
+    const device = source.devices.find(d => d.id === deviceId);
+    if (!device?.reachable || !device?.controlAvailable) {
+      throw new ApiError('Standalone device hardware is not ready for switching', 409);
+    }
+    const bridge = this.get(bridgeId);
+    let response;
+    try {
+      // Firmware requires Origin matching its device URL and exactly two bytes.
+      response = await this.fetcher(bridge.url + '/api/control', {
+        method: 'POST', redirect: 'error', signal: AbortSignal.timeout(4000),
+        headers: { Origin: bridge.url, 'Content-Type': 'application/octet-stream' },
+        body: Uint8Array.of(index - 1, on ? 1 : 0)
+      });
+    } catch (error) {
+      throw new ApiError('Standalone command failed: ' + error.message, 502);
+    }
+    if (!response.ok) throw new ApiError('Standalone rejected control (HTTP ' + response.status + ')', 502);
+    let ack;
+    try { ack = await response.json(); }
+    catch { throw new ApiError('Invalid Standalone control response', 502); }
+    if (ack?.accepted !== true) throw new ApiError('Standalone command not accepted', 502);
+    // Accepted is not confirmed. Read the actual relay state; never resend a command.
+    for (let attempt = 0; attempt < 16; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      let current;
+      try { current = await this.request(bridgeId, '/api/device'); }
+      catch { continue; }
+      if (current?.channels?.[index - 1]?.on === on) return { ok: true, confirmed: true };
+    }
+    throw new ApiError('Control accepted but not confirmed; refresh before retrying', 504);
   }
 }
