@@ -101,14 +101,20 @@ function renderBridges(data) {
     top.append(el('div', 'bridge-name', b.name), el('span', 'state ' + (b.online ? 'online' : 'offline'), b.online ? '● Online' : '● Offline'));
     card.append(top, el('p', 'bridge-url', b.url));
     const meta = el('div', 'bridge-meta');
-    meta.append(el('span', '', b.devices.length + ' مشترك'), el('span', '', b.commissioning?.commissioned ? 'Matter paired' : 'Matter not paired'));
+    meta.append(el('span', '', b.devices.length + ' مشترك'), el('span', '', b.type === 'standalone' ? 'Standalone • Direct LAN' : (b.type === 'matterbridge' ? (b.commissioning?.commissioned ? 'Matter paired' : 'Matter not paired') : 'النوع غير معروف')));
     card.append(meta);
     if (!b.online && b.error) card.append(el('p', 'alert', b.error));
     const actions = el('div', 'bridge-actions');
-    if (!b.commissioning?.commissioned) {
-      actions.append(button('QR / Pairing', 'tiny primary', () => showQr(b), !b.online));
-    } else {
-      actions.append(button('إعادة ربط Matter', 'tiny secondary', () => reconnect(b), !b.online));
+    if (b.type === 'standalone') {
+      const link = el('a', 'btn tiny secondary', 'الداشبورد المحلية');
+      link.href = b.url; link.target = '_blank'; link.rel = 'noopener noreferrer';
+      actions.append(link);
+    } else if (b.type === 'matterbridge') {
+      if (!b.commissioning?.commissioned) {
+        actions.append(button('QR / Pairing', 'tiny primary', () => showQr(b), !b.online));
+      } else {
+        actions.append(button('إعادة ربط Matter', 'tiny secondary', () => reconnect(b), !b.online));
+      }
     }
     actions.append(button('إزالة المصدر', 'tiny danger', () => removeBridge(b)));
     card.append(actions);
@@ -134,11 +140,14 @@ function drawOutlet(d, o) {
   toggle.setAttribute('aria-checked', String(o.on));
   toggle.setAttribute('aria-label', 'تشغيل أو إيقاف المخرج ' + o.index + ' في ' + d.name);
   toggle.addEventListener('click', () => outletAction(d, o, toggle));
-  header.append(el('span', '', 'مخرج ' + o.index), toggle);
+  toggle.disabled = !d.reachable || d.controlAvailable === false || o.on === null;
+  header.append(el('span', '', o.name || 'مخرج ' + o.index), toggle);
   box.append(header);
   const power = el('div', 'measure', fmt(o.powerW) + ' ');
   power.append(el('small', '', 'W'));
   box.append(power, el('div', 'submeasure', fmt(o.energyWh, 2) + ' Wh • ' + fmt(o.temperatureC, 0) + ' °C'));
+  if (o.currentA != null) box.append(el('div', 'submeasure', fmt(o.currentA, 3) + ' A'));
+  if (o.locked) box.append(el('div', 'device-sub', '🔒 الزر الفيزيائي مقفول'));
   if (o.overheatProtection || o.overloadProtection) box.append(el('p', 'alert',
     o.overheatProtection ? 'تنبيه: حماية الحرارة' : 'تنبيه: حماية الحمل'));
   return box;
@@ -164,18 +173,23 @@ function renderDevices(data) {
   );
   $('device-count').textContent = String(devices.length);
   if (!devices.length) {
-    target.append(el('div', 'empty', data.bridges.length ? 'مافيش أجهزة مطابقة للبحث أو الفلاتر.' : 'ضيف Bridge من القائمة الجانبية علشان تبدأ.'));
+    target.append(el('div', 'empty', data.bridges.length ? 'مافيش أجهزة مطابقة للبحث أو الفلاتر.' : 'ضيف IP مشترك Standalone أو Bridge من القائمة الجانبية علشان تبدأ.'));
     return;
   }
   for (const d of devices) {
     const card = el('article', 'device'), head = el('div', 'device-head');
     const info = el('div');
     info.append(el('h3', 'device-title', d.name));
-    details(info, 'MAC / ID: ' + d.id + '   •   FW: ' + (d.firmwareVersion || '—') + '   •   Bridge: ' + d.bridgeName);
+    details(info, 'MAC / ID: ' + d.id + '   •   FW: ' + (d.firmwareVersion || '—') + '   •   Source: ' + d.bridgeName);
+    if (d.sourceType === 'standalone') {
+      details(info, 'Standalone مباشر • ' + fmt(d.voltageV) + ' V • ' + fmt(d.currentA, 3) + ' A • Wi-Fi ' + (d.rssi == null ? '—' : d.rssi + ' dBm'));
+      if (d.protection?.reason || d.protection?.error) info.append(el('div', 'alert', '⚠️ تنبيه حماية / حساسات؛ افتح الداشبورد المحلية للتفاصيل'));
+      if (d.controlAvailable === false && d.reachable) info.append(el('div', 'alert', 'الهاردوير غير جاهز للتحكم'));
+    }
     const actions = el('div', 'device-actions');
     actions.append(el('span', 'state ' + (d.reachable ? 'online' : 'offline'), d.reachable ? '● Online' : '● Offline'));
     actions.append(button('↻ تحديث', 'tiny secondary', () => deviceRefresh(d), !d.reachable));
-    if (!d.reachable) actions.append(button('حذف الجهاز', 'tiny danger', () => removeDevice(d)));
+    if (!d.reachable && d.sourceType !== 'standalone') actions.append(button('حذف الجهاز', 'tiny danger', () => removeDevice(d)));
     head.append(info, actions); card.append(head);
     const outlets = el('div', 'outlets');
     for (const o of d.outlets) outlets.append(drawOutlet(d, o));

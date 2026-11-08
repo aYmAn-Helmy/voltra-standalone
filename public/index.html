@@ -24,21 +24,21 @@
       <aside class="sidebar">
         <section class="panel side-panel">
           <p class="eyebrow">BRIDGE CONNECTIONS</p>
-          <h2>مصادر الربط وMatter</h2>
-          <p class="hint">كل Bridge ممكن يكون متصل بأكتر من مشترك. تقدر تضيف أكتر من سيرفر هنا.</p>
+          <h2>المشتركات ومصادر الربط</h2>
+          <p class="hint">ضيف IP أي مشترك Standalone مباشرة، أو ضيف سيرفر MatterBridge عليه كذا مشترك.</p>
           <div id="bridge-list" class="bridge-list"><div class="empty compact">جارٍ تحميل المصادر...</div></div>
         </section>
         <section class="panel side-panel">
           <p class="eyebrow">ADD BRIDGE</p>
-          <h2>إضافة مصدر جديد</h2>
+          <h2>إضافة مشترك أو Bridge</h2>
           <form id="bridge-form">
             <label for="bridge-name">اسم المصدر</label>
             <input id="bridge-name" name="name" maxlength="64" required placeholder="مثال: مكتب الإدارة">
-            <label for="bridge-url">عنوان الداشبورد المحلية</label>
-            <input id="bridge-url" name="url" type="url" required inputmode="url" dir="ltr" placeholder="http://192.168.1.100:8086">
-            <button class="btn primary wide" id="add-bridge" type="submit">+ إضافة Bridge</button>
+            <label for="bridge-url">رابط المشترك أو الـBridge</label>
+            <input id="bridge-url" name="url" type="url" required inputmode="url" dir="ltr" placeholder="http://192.168.0.55">
+            <button class="btn primary wide" id="add-bridge" type="submit">+ إضافة مشترك / Bridge</button>
           </form>
-          <p class="hint tip">التوصيل بيتم على شبكة LAN عبر HTTP API الخاصة بالمشروع الأصلي.</p>
+          <p class="hint tip">Standalone: الـIP مباشر على port 80. MatterBridge: عنوان السيرفر مع :8086. لازم Voltra تقدر توصل للجهاز على نفس الشبكة.</p>
         </section>
       </aside>
       <main class="panel main-panel">
