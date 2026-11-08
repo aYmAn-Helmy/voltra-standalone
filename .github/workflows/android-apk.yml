@@ -18,6 +18,13 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate Android JavaScript transport
+        run: |
+          node --check public/mobile.js
+          node --test test/mobile.test.mjs
       - name: Use hosted Android SDK
         run: |
           echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
