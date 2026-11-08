@@ -32,7 +32,7 @@ test('protects APIs with Basic auth and forwards outlet commands safely', async 
     assert.deepEqual(calls[0], {
       id: 'office', deviceId: 'AABBCCDDEEFF', index: 1, on: true
     });
-    const bad = await fetch(base + '/api/bridges/office/devices/AABBCCDDEEFF/outlets/5/state', {
+    const bad = await fetch(base + '/api/bridges/office/devices/AABBCCDDEEFF/outlets/6/state', {
       method: 'POST', headers: { Authorization: auth, 'Content-Type': 'application/json' },
       body: JSON.stringify({ on: true })
     });
