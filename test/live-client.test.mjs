@@ -56,6 +56,8 @@ test('browser parses firmware events into device card readings without reloading
   assert.equal(d.outlets[0].energyWh, 290);
   assert.equal(d.outlets[0].temperatureC, 27.5);
   assert.equal(d.outlets[1].locked, true);
+  assert.equal(api.samples('office', d.id).length, 1);
+  assert.equal(api.samples('office', d.id)[0].powerW, 12);
   const refresh = { devices: [strip()] };
   api.hydrate(refresh);
   assert.equal(refresh.devices[0].name, 'New');
@@ -82,4 +84,21 @@ test('relay events override channel state only for correct MAC/bridge, then rese
   assert.equal(api.receive('relay', { ...envelope, snapshot: { known: 16, on: 2, fault: 0 } }, [d]), false);
   api.stop();
   assert.equal(created[0].closed, true);
+});
+
+
+test('wattage trend retains only the last 60 SSE samples per device', async () => {
+  const { api } = await harness();
+  const d = strip();
+  const start = Date.now() - 120000;
+  for (let i = 0; i < 75; i++) {
+    const raw = firmware(i % 2 === 0);
+    raw.channels[0].power_mw = i * 1000;
+    const event = { bridgeId: 'office', deviceId: d.id, at: start + i * 1100, snapshot: raw };
+    assert.equal(api.receive('device', event, [d]), true);
+  }
+  const all = api.samples('office', d.id);
+  assert.equal(all.length, 60);
+  assert.equal(all[0].powerW, 15);
+  assert.equal(all.at(-1).powerW, 74);
 });
