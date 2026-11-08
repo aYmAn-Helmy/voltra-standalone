@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#07111f">
   <title>Voltra Standalone — Control Center</title>
   <link rel="stylesheet" href="/style.css">
+  <script src="/live.js" defer></script>
   <script src="/settings.js" defer></script>
   <script src="/app.js" defer></script>
 </head>
@@ -47,11 +48,11 @@
           <div><p class="eyebrow">DEVICE MANAGEMENT</p><h2>المشتركات المتصلة <span id="device-count" class="count">0</span></h2></div>
           <div class="filters"><input id="search" type="search" placeholder="بحث بالاسم أو MAC أو Firmware" aria-label="بحث الأجهزة"><select id="bridge-filter" aria-label="فلترة حسب Bridge"><option value="all">كل المصادر</option></select><select id="status-filter" aria-label="فلترة حسب الحالة"><option value="all">كل الحالات</option><option value="online">Online</option><option value="offline">Offline</option></select></div>
         </div>
-        <div class="legend"><span><i class="dot small green"></i>Online</span><span><i class="dot small"></i>Offline</span><span id="outlet-count">—</span></div>
+        <div class="legend"><span><i class="dot small green"></i>Online</span><span><i class="dot small"></i>Offline</span><span id="outlet-count">—</span><span id="stream-summary" class="stream-summary">◌ جاري تهيئة التحديث اللحظي</span></div>
         <div id="device-list" class="device-list"><div class="empty">مافيش أجهزة للعرض حاليًا.</div></div>
       </main>
     </div>
-    <footer>VOLTRA STANDALONE <span>•</span> MTTL-W01 MatterBridge API <span>•</span> التحكم مرتبط بتوافر السيرفر المحلي</footer>
+    <footer>VOLTRA STANDALONE <span>•</span> MTTL-W01 Direct SSE + MatterBridge API <span>•</span> التحكم مرتبط بتوافر السيرفر المحلي</footer>
   </div>
   <dialog id="qr-dialog">
     <div class="qr-content"><h2 id="qr-title">Matter Pairing</h2><p class="hint">امسح الكود من تطبيق Matter</p><img id="qr-image" alt="Matter pairing QR code" width="300" height="300"><p>Manual pairing code</p><strong id="qr-code" dir="ltr">—</strong><form method="dialog"><button class="btn secondary wide">إغلاق</button></form></div>

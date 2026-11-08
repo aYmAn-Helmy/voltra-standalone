@@ -1,7 +1,7 @@
 'use strict';
 
 const $ = id => document.getElementById(id);
-const view = { data: null, loading: false, busy: new Set(), toastTimer: null };
+const view = { data: null, loading: false, busy: new Set(), toastTimer: null, lastPollAt: 0 };
 
 function el(tag, className, label) {
   const n = document.createElement(tag);
@@ -92,7 +92,7 @@ async function removeBridge(b) {
 function renderBridges(data) {
   const container = $('bridge-list'); reset(container);
   if (!data.bridges.length) {
-    container.append(el('div', 'empty compact', 'ضيف أول Bridge بعنوان الداشبورد المحلية علشان تظهر الأجهزة هنا.'));
+    container.append(el('div', 'empty compact', 'ضيف IP المشترك Standalone أو رابط MatterBridge لعرض الأجهزة.'));
     return;
   }
   for (const b of data.bridges) {
@@ -100,6 +100,15 @@ function renderBridges(data) {
     const top = el('div', 'bridge-top');
     top.append(el('div', 'bridge-name', b.name), el('span', 'state ' + (b.online ? 'online' : 'offline'), b.online ? '● Online' : '● Offline'));
     card.append(top, el('p', 'bridge-url', b.url));
+    if (b.type === 'standalone') {
+      const indicator = el('div', 'bridge-stream', '◌ SSE: جاري الاتصال');
+      indicator.dataset.bridgeId = b.id;
+      const state = [...globalThis.VoltraLive.states.entries()].find(([k]) =>
+        k.startsWith(b.id + ':'))?.[1];
+      indicator.textContent = b.online ? (state?.connected ? '● SSE Live' : '◌ HTTP fallback') : '● Offline';
+      indicator.classList.toggle('connected', !!state?.connected);
+      card.append(indicator);
+    }
     const meta = el('div', 'bridge-meta');
     meta.append(el('span', '', b.devices.length + ' مشترك'), el('span', '', b.type === 'standalone' ? 'Standalone • Direct LAN' : (b.type === 'matterbridge' ? (b.commissioning?.commissioned ? 'Matter paired' : 'Matter not paired') : 'النوع غير معروف')));
     card.append(meta);
@@ -134,6 +143,8 @@ async function outletAction(device, outlet, toggle) {
 }
 function drawOutlet(d, o) {
   const box = el('div', 'outlet'), header = el('div', 'outlet-head');
+  box.dataset.outletIndex = String(o.index);
+  box.classList.toggle('outlet-on', o.on === true);
   const toggle = el('button', 'switch' + (o.on ? ' on' : ''));
   toggle.type = 'button'; toggle.disabled = !d.reachable;
   toggle.setAttribute('role', 'switch');
@@ -147,7 +158,10 @@ function drawOutlet(d, o) {
   power.append(el('small', '', 'W'));
   box.append(power, el('div', 'submeasure', fmt(o.energyWh, 2) + ' Wh • ' + fmt(o.temperatureC, 0) + ' °C'));
   if (o.currentA != null) box.append(el('div', 'submeasure', fmt(o.currentA, 3) + ' A'));
-  if (o.locked) box.append(el('div', 'device-sub', '🔒 الزر الفيزيائي مقفول'));
+  const locked = el('div', 'outlet-lock', o.locked ? '🔒 الزر الفيزيائي مقفول' : '🔓 الزر متاح');
+  box.append(locked);
+  const status = el('span', 'outlet-state', o.on === true ? 'ON' : o.on === false ? 'OFF' : '—');
+  box.append(status);
   if (o.overheatProtection || o.overloadProtection) box.append(el('p', 'alert',
     o.overheatProtection ? 'تنبيه: حماية الحرارة' : 'تنبيه: حماية الحمل'));
   return box;
@@ -182,16 +196,27 @@ function renderDevices(data) {
   }
   for (const d of devices) {
     const card = el('article', 'device'), head = el('div', 'device-head');
+    card.dataset.deviceKey = d.bridgeId + ':' + d.id;
+    card.classList.toggle('device-live', !!d.streamConnected);
     const info = el('div');
     info.append(el('h3', 'device-title', d.name));
     details(info, 'MAC / ID: ' + d.id + '   •   FW: ' + (d.firmwareVersion || '—') + '   •   Source: ' + d.bridgeName);
     if (d.sourceType === 'standalone') {
-      details(info, 'Standalone مباشر • ' + fmt(d.voltageV) + ' V • ' + fmt(d.currentA, 3) + ' A • Wi-Fi ' + (d.rssi == null ? '—' : d.rssi + ' dBm'));
+      info.append(el('p', 'device-live-telemetry',
+        '⚡ ' + fmt(d.outlets.reduce((sum, o) => sum + (o.powerW || 0), 0)) +
+        ' W  •  ' + fmt(d.voltageV) + ' V  •  ' + fmt(d.currentA, 3) +
+        ' A  •  Wi-Fi ' + (d.rssi == null ? '—' : d.rssi + ' dBm')));
       if (d.protection?.reason || d.protection?.error) info.append(el('div', 'alert', '⚠️ تنبيه حماية / حساسات؛ افتح الداشبورد المحلية للتفاصيل'));
       if (d.controlAvailable === false && d.reachable) info.append(el('div', 'alert', 'الهاردوير غير جاهز للتحكم'));
     }
     const actions = el('div', 'device-actions');
     actions.append(el('span', 'state ' + (d.reachable ? 'online' : 'offline'), d.reachable ? '● Online' : '● Offline'));
+    if (d.sourceType === 'standalone') {
+      const live = el('span', 'device-live-label' + (d.streamConnected ? ' connected' : ''),
+        d.streamConnected ? '● SSE مباشر' : '◌ HTTP احتياطي');
+      live.title = 'SSE مباشر من Firmware أو تحديث احتياطي عبر HTTP';
+      actions.append(live);
+    }
     actions.append(button('↻ تحديث', 'tiny secondary', () => deviceRefresh(d), !d.reachable));
     if (d.sourceType === 'standalone') {
       const all = on => {
@@ -218,7 +243,92 @@ function renderDevices(data) {
     target.append(card);
   }
 }
+
+function liveTotals(data) {
+  const active = data.devices.filter(d => d.reachable).flatMap(d => d.outlets);
+  data.summary.outletsOn = active.filter(o => o.on === true).length;
+  data.summary.powerW = active.reduce((sum, o) => sum + (o.powerW ?? 0), 0);
+  data.summary.energyWh = active.reduce((sum, o) => sum + (o.energyWh ?? 0), 0);
+}
+function patchLiveCard(d) {
+  const card = [...$('device-list').querySelectorAll('article.device')].find(node =>
+    node.dataset.deviceKey === d.bridgeId + ':' + d.id);
+  if (!card) return;
+  card.classList.toggle('device-live', !!d.streamConnected);
+  const heading = card.querySelector('.device-title');
+  if (heading) heading.textContent = d.name;
+  const summary = card.querySelector('.device-live-telemetry');
+  if (summary) summary.textContent = '⚡ ' +
+    fmt(d.outlets.reduce((sum, o) => sum + (o.powerW ?? 0), 0)) + ' W • ' +
+    fmt(d.voltageV) + ' V • ' + fmt(d.currentA, 3) + ' A • Wi-Fi ' +
+    (d.rssi == null ? '—' : d.rssi + ' dBm');
+  const label = card.querySelector('.device-live-label');
+  if (label) {
+    label.classList.toggle('connected', !!d.streamConnected);
+    label.textContent = d.streamConnected ? '● SSE مباشر' : '◌ HTTP احتياطي';
+    label.title = d.streamConnected ? 'بيانات حية من الجهاز' : 'جارٍ استخدام التحديث الدوري';
+  }
+  for (const o of d.outlets) {
+    const tile = [...card.querySelectorAll('.outlet')].find(n => n.dataset.outletIndex === String(o.index));
+    if (!tile) continue;
+    tile.classList.toggle('outlet-on', o.on === true);
+    const name = tile.querySelector('.outlet-head span');
+    if (name) name.textContent = o.name || 'مخرج ' + o.index;
+    const toggle = tile.querySelector('button.switch');
+    if (toggle) {
+      toggle.classList.toggle('on', o.on === true);
+      toggle.setAttribute('aria-checked', String(o.on === true));
+      const busy = view.busy.has(d.bridgeId + ':' + d.id + ':' + o.index);
+      toggle.disabled = busy || !d.reachable || !d.controlAvailable || o.on === null;
+    }
+    const watts = tile.querySelector('.measure');
+    if (watts) watts.replaceChildren(document.createTextNode(fmt(o.powerW) + ' '), el('small', '', 'W'));
+    const sub = tile.querySelector('.submeasure');
+    if (sub) sub.textContent = fmt(o.energyWh, 2) + ' Wh • ' + fmt(o.temperatureC, 0) + ' °C';
+    const amp = tile.querySelectorAll('.submeasure')[1];
+    if (amp) amp.textContent = fmt(o.currentA, 3) + ' A';
+    const lock = tile.querySelector('.outlet-lock');
+    if (lock) lock.textContent = o.locked ? '🔒 الزر الفيزيائي مقفول' : '🔓 الزر متاح';
+    const state = tile.querySelector('.outlet-state');
+    if (state) state.textContent = o.on === true ? 'ON' : o.on === false ? 'OFF' : '—';
+  }
+}
+function patchSourceIndicator(x) {
+  if (!view.data) return;
+  const d = view.data.devices.find(device => device.bridgeId === x.bridgeId &&
+    device.id === x.deviceId);
+  if (d) {
+    d.streamConnected = x.connected === true;
+    patchLiveCard(d);
+  }
+  const label = [...document.querySelectorAll('.bridge-stream')].find(el => el.dataset.bridgeId === x.bridgeId);
+  if (label) {
+    label.textContent = x.connected ? '● SSE Live' : '◌ HTTP fallback';
+    label.classList.toggle('connected', !!x.connected);
+  }
+  updateStreamSummary();
+}
+function updateStreamSummary() {
+  const count = globalThis.VoltraLive.liveCount();
+  const total = view.data?.devices.filter(d => d.sourceType === 'standalone' && d.reachable).length ?? 0;
+  $('stream-summary').textContent = count
+    ? '● SSE مباشر: ' + count + '/' + total + ' مشترك'
+    : '◌ SSE غير متاح • تحديث HTTP احتياطي';
+  $('stream-summary').classList.toggle('connected', count > 0);
+}
+function onLiveEvent(kind, envelope) {
+  if (!view.data || !globalThis.VoltraLive.receive(kind, envelope, view.data.devices)) return;
+  const d = view.data.devices.find(d => d.bridgeId === envelope.bridgeId && d.id === envelope.deviceId);
+  if (!d) return;
+  if (globalThis.VoltraSettings?.observe) globalThis.VoltraSettings.observe(d);
+  if (globalThis.VoltraSettings?.updateLive) globalThis.VoltraSettings.updateLive(d, kind, envelope.snapshot);
+  patchLiveCard(d);
+  liveTotals(view.data);
+  renderSummary(view.data);
+  updateStreamSummary();
+}
 function render(data) {
+  globalThis.VoltraLive.hydrate(data);
   view.data = data;
   if (globalThis.VoltraSettings?.observe) {
     for (const device of data.devices) {
@@ -229,11 +339,16 @@ function render(data) {
   renderFilter(data);
   renderBridges(data);
   renderDevices(data);
+  updateStreamSummary();
 }
 async function refresh() {
   if (view.loading) return;
   view.loading = true;
-  try { render(await api('/api/status')); }
+  try {
+    const result = await api('/api/status');
+    view.lastPollAt = Date.now();
+    render(result);
+  }
   catch (e) {
     $('health-dot').classList.remove('ok');
     $('health').textContent = 'فشل الاتصال بـVoltra';
@@ -258,6 +373,14 @@ $('bridge-filter').addEventListener('change', () => { if (view.data) renderDevic
 $('status-filter').addEventListener('change', () => { if (view.data) renderDevices(view.data); });
 $('refresh-all').addEventListener('click', refresh);
 $('qr-dialog').addEventListener('close', () => { $('qr-image').removeAttribute('src'); });
-document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) globalThis.VoltraLive.stop();
+  else { refresh(); globalThis.VoltraLive.start(onLiveEvent, patchSourceIndicator); }
+});
+globalThis.VoltraLive.start(onLiveEvent, patchSourceIndicator);
 refresh();
-setInterval(() => { if (!document.hidden) refresh(); }, 5000);
+// SSE updates are immediate. HTTP refresh remains as a safety fallback when
+// firmware permits only one SSE client (e.g. its own local dashboard).
+setInterval(() => {
+  if (!document.hidden) refresh();
+}, 30000);
