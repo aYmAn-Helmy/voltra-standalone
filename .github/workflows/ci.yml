@@ -18,6 +18,7 @@ jobs:
         run: |
           node --check src/manager.mjs
           node --check src/standalone.mjs
+          node --check src/live-hub.mjs
           node --check src/standalone-config.mjs
           node --check src/standalone-service.mjs
           node --check src/standalone-firmware.mjs
@@ -25,5 +26,6 @@ jobs:
           node --check src/index.mjs
           node --check public/app.js
           node --check public/settings.js
+          node --check public/live.js
       - name: Run unit tests
         run: npm test
