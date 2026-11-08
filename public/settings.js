@@ -60,6 +60,32 @@
   const errText = e => e instanceof Error ? e.message : String(e);
   const days = ['الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت', 'الأحد'];
   const emptyRule = () => ({ minute: 0, mode: 0, day: 0, channel: 0, on: 0 });
+  const eventLog = new Map();
+  function observe(d) {
+    const key = d.bridgeId + ':' + d.id;
+    const state = {
+      online: d.reachable, firmware: d.firmwareVersion,
+      outputs: d.outlets.map(o => o.on)
+    };
+    const previous = eventLog.get(key);
+    const logs = previous?.logs ?? [];
+    const log = msg => {
+      logs.push({ at: new Date().toLocaleTimeString('ar-EG'), msg });
+      if (logs.length > 64) logs.shift();
+    };
+    if (!previous) log('بدأت مراقبة حالة المشترك');
+    else {
+      if (previous.state.online !== state.online) log(state.online ? 'عاد المشترك Online' : 'المشترك Offline');
+      if (previous.state.firmware !== state.firmware) log('تغيّر إصدار الـFirmware');
+      state.outputs.forEach((on, i) => {
+        if (typeof on === 'boolean' && previous.state.outputs[i] !== on)
+          log('المخرج ' + (i + 1) + ': ' + (on ? 'ON' : 'OFF'));
+      });
+    }
+    eventLog.set(key, { logs, state });
+    // Small bounded in-memory log only; no credentials or persistent storage.
+    if (eventLog.size > 128) eventLog.delete(eventLog.keys().next().value);
+  }
   const pad = n => String(n).padStart(2, '0');
 
   function create(device, onRefresh) {
@@ -151,6 +177,22 @@
       }
       root.append(pane);
       note(root, 'القراءات دي من المشترك مباشرة؛ اضغط «إعادة قراءة» علشان تحدّث التفاصيل. تحديث المخارج الأساسية مستمر تلقائيًا.');
+    }
+
+    function logs() {
+      const key = device.bridgeId + ':' + device.id;
+      const list = text('pre', null, 'advanced-log');
+      const entries = eventLog.get(key)?.logs || [];
+      list.textContent = entries.length ?
+        entries.map(entry => '[' + entry.at + '] ' + entry.msg).join('\n') :
+        'لا توجد أحداث مسجلة في جلسة Voltra الحالية';
+      root.append(list);
+      note(root, 'ده سجل للمتصفح أثناء تشغيل Voltra فقط، مش سجل محفوظ في فلاش المشترك.');
+      root.append(btn('مسح السجل', () => {
+        const entry = eventLog.get(key);
+        if (entry) entry.logs.length = 0;
+        render();
+      }, 'secondary tiny'));
     }
 
     function names() {
@@ -406,12 +448,12 @@
     }
 
     const tabs = [
-      ['overview', 'القراءات والتشخيص'], ['names', 'الأسماء والأقفال'],
+      ['overview', 'القراءات والتشخيص'], ['logs', 'سجل الأحداث'], ['names', 'الأسماء والأقفال'],
       ['timers', 'التايمر'], ['schedules', 'الجدولة'],
       ['protection', 'الحماية'], ['mqtt', 'MQTT'],
       ['wifi', 'Wi-Fi'], ['firmware', 'Firmware']
     ];
-    const views = { overview, names, timers, schedules, protection, mqtt, wifi, firmware };
+    const views = { overview, logs, names, timers, schedules, protection, mqtt, wifi, firmware };
     function render() {
       if (!details.open || !state.info) return;
       root.replaceChildren();
@@ -434,5 +476,5 @@
     });
     return details;
   }
-  globalThis.VoltraSettings = { create };
+  globalThis.VoltraSettings = { create, observe };
 })();

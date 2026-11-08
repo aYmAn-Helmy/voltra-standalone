@@ -20,6 +20,9 @@ export function standaloneDevice(source, status, device, version) {
     currentA: scaled(device.current_ma, 1000),
     rssi: Number.isInteger(status.rssi) ? status.rssi : null,
     protection: device.protection ?? null,
+    uptimeMs: status.uptime_ms ?? null,
+    timerRunning: device.timer_running ?? 0,
+    timerEnd: Array.isArray(device.timer_end) ? device.timer_end : null,
     outlets: device.channels.map((o, index) => ({
       index: index + 1, name: o.name || 'Outlet ' + (index + 1),
       on: typeof o.on === 'boolean' ? o.on : null,

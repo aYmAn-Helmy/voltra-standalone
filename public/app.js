@@ -220,6 +220,11 @@ function renderDevices(data) {
 }
 function render(data) {
   view.data = data;
+  if (globalThis.VoltraSettings?.observe) {
+    for (const device of data.devices) {
+      if (device.sourceType === 'standalone') globalThis.VoltraSettings.observe(device);
+    }
+  }
   renderSummary(data);
   renderFilter(data);
   renderBridges(data);
