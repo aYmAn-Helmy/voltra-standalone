@@ -47,7 +47,9 @@
       outlet.currentA = scaled(c.current_ma, 1000);
       outlet.locked = c.locked === true;
     });
-    applyRelay(device, relays.get(key(device.bridgeId, device.id))?.snapshot);
+    const latestRelay = relays.get(key(device.bridgeId, device.id));
+    if (latestRelay && Date.now() - latestRelay.at < 25000 && latestRelay.at >= at)
+      applyRelay(device, latestRelay.snapshot);
     device.liveAt = at;
     return true;
   }

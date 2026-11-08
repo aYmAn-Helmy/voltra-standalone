@@ -300,6 +300,7 @@ function patchSourceIndicator(x) {
   if (d) {
     d.streamConnected = x.connected === true;
     patchLiveCard(d);
+    if (globalThis.VoltraSettings?.updateLive) globalThis.VoltraSettings.updateLive(d, 'source', {});
   }
   const label = [...document.querySelectorAll('.bridge-stream')].find(el => el.dataset.bridgeId === x.bridgeId);
   if (label) {

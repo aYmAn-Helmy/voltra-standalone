@@ -119,8 +119,11 @@
     if (panelState?.info?.status && d.timerEnd) {
       panelState.info.device.timer_running = d.timerRunning;
       panelState.info.device.timer_end = d.timerEnd;
-      panelState.info.status.uptime_ms = d.uptimeMs;
-      panelState.infoTime = Date.now();
+      if (Number.isInteger(d.uptimeMs) && panelState.lastSeenUptime !== d.uptimeMs) {
+        panelState.info.status.uptime_ms = d.uptimeMs;
+        panelState.infoTime = Date.now();
+        panelState.lastSeenUptime = d.uptimeMs;
+      }
     }
     // Small bounded in-memory log only; no credentials or persistent storage.
     if (eventLog.size > 128) eventLog.delete(eventLog.keys().next().value);
@@ -133,8 +136,11 @@
     details.dataset.deviceKey = device.bridgeId + ':' + device.id;
     const summary = text('summary', '⚙️ إدارة كل إعدادات المشترك • افتح الأقسام');
     const root = text('div', null, 'advanced-body');
+    const streamBadge = text('span', '◌ SSE متصل؟', 'advanced-stream-state');
+    summary.append(streamBadge);
     details.append(summary, root);
-    const state = { tab: 'overview', info: null, infoTime: 0, busy: false, ruleDraft: null };
+    const state = { tab: 'overview', info: null, infoTime: 0, busy: false,
+      ruleDraft: null, refreshView: null, lastSeenUptime: null };
     panelStates.set(details, state);
 
     const message = (msg, error = false) => {
@@ -149,6 +155,7 @@
         const info = await json(endpoint(device) + '/settings');
         state.info = info;
         state.infoTime = Date.now();
+        state.lastSeenUptime = info.status?.uptime_ms ?? null;
         state.ruleDraft = null;
         render();
       } catch (e) {
@@ -166,6 +173,7 @@
         if (!data.confirmed) throw Error('تعذر تأكيد الحفظ');
         state.info = await json(endpoint(device) + '/settings');
         state.infoTime = Date.now();
+        state.lastSeenUptime = state.info.status?.uptime_ms ?? null;
         state.ruleDraft = null;
         state.busy = false;
         render();
@@ -515,6 +523,7 @@
       views[state.tab]();
     }
 
+    state.refreshView = render;
     details.addEventListener('toggle', () => {
       if (details.open) {
         if (!state.info) load();
@@ -523,5 +532,34 @@
     });
     return details;
   }
-  globalThis.VoltraSettings = { create, observe };
+  function updateLive(d, kind, raw) {
+    const key = d.bridgeId + ':' + d.id;
+    const panel = [...document.querySelectorAll('details.device-advanced')]
+      .find(node => node.dataset.deviceKey === key);
+    if (!panel) return;
+    const badge = panel.querySelector('.advanced-stream-state');
+    if (badge) {
+      badge.textContent = d.streamConnected ? '● SSE LIVE' : '◌ HTTP';
+      badge.classList.toggle('connected', !!d.streamConnected);
+    }
+    const state = panelStates.get(panel);
+    if (!state?.info || !panel.open) return;
+    if (kind === 'device' && raw && Array.isArray(raw.channels) && raw.channels.length === 4) {
+      const device = state.info.device || {};
+      state.info.device = { ...device, ...raw };
+    } else if (kind === 'relay' && raw && Array.isArray(state.info.device?.channels)) {
+      state.info.device.channels.forEach((channel, i) => {
+        const bit = 1 << i;
+        channel.on = raw.known & bit ? !!(raw.on & bit) : null;
+      });
+    }
+    // Overview and log pages are read-only; keep configuration form focus and
+    // unsaved values untouched on every real-time event.
+    if ((state.tab === 'overview' || state.tab === 'logs') && state.refreshView) {
+      state.refreshView();
+    } else if (state.tab === 'timers') {
+      updateTimerDisplays(panel, state);
+    }
+  }
+  globalThis.VoltraSettings = { create, observe, updateLive };
 })();
