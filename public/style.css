@@ -109,3 +109,5 @@ dialog::backdrop{background:#000c}.qr-content{text-align:center;min-width:270px}
 
 .advanced-log{white-space:pre-wrap;overflow-wrap:anywhere;max-height:340px;overflow:auto;
   padding:12px;background:#07111f;color:#d8edf9;border:1px solid var(--line);border-radius:10px;font:12px/1.7 ui-monospace,monospace}
+
+.advanced-countdown{display:block;font:12px ui-monospace,monospace;color:var(--mint);align-self:center;min-width:180px}

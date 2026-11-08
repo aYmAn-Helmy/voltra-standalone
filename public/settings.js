@@ -61,6 +61,36 @@
   const days = ['الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت', 'الأحد'];
   const emptyRule = () => ({ minute: 0, mode: 0, day: 0, channel: 0, on: 0 });
   const eventLog = new Map();
+  const panelStates = new WeakMap();
+  function timerTime(seconds) {
+    const s = Math.max(0, Math.ceil(seconds));
+    return pad(Math.floor(s / 3600)) + ':' + pad(Math.floor(s / 60) % 60) + ':' + pad(s % 60);
+  }
+  function updateTimerDisplays(panel, state) {
+    if (!panel.open || state.tab !== 'timers' || !state.info) return;
+    const d = state.info.device, s = state.info.status, c = state.info.config;
+    for (const label of panel.querySelectorAll('.advanced-countdown')) {
+      const index = Number(label.dataset.channel);
+      const configured = c.timer_minutes?.[index] || 0;
+      let textValue = 'غير مسجل';
+      if (configured > 0) {
+        textValue = 'بانتظار التشغيل: ' + timerTime(configured * 60);
+        if (Array.isArray(d?.timer_end) && Number.isInteger(s?.uptime_ms) &&
+            d.timer_running & (1 << index)) {
+          const uptime = (s.uptime_ms + (Date.now() - (state.infoTime || Date.now()))) >>> 0;
+          const leftMs = (d.timer_end[index] - uptime) | 0;
+          textValue = 'المتبقي: ' + timerTime(leftMs / 1000);
+        }
+      }
+      label.textContent = textValue;
+    }
+  }
+  setInterval(() => {
+    document.querySelectorAll('details.device-advanced[open]').forEach(panel => {
+      const state = panelStates.get(panel);
+      if (state) updateTimerDisplays(panel, state);
+    });
+  }, 1000);
   function observe(d) {
     const key = d.bridgeId + ':' + d.id;
     const state = {
@@ -83,6 +113,15 @@
       });
     }
     eventLog.set(key, { logs, state });
+    const panel = [...document.querySelectorAll('details.device-advanced')]
+      .find(el => el.dataset.deviceKey === key);
+    const panelState = panel && panelStates.get(panel);
+    if (panelState?.info && d.timerEnd) {
+      panelState.info.device.timer_running = d.timerRunning;
+      panelState.info.device.timer_end = d.timerEnd;
+      panelState.info.status.uptime_ms = d.uptimeMs;
+      panelState.infoTime = Date.now();
+    }
     // Small bounded in-memory log only; no credentials or persistent storage.
     if (eventLog.size > 128) eventLog.delete(eventLog.keys().next().value);
   }
@@ -95,7 +134,8 @@
     const summary = text('summary', '⚙️ إدارة كل إعدادات المشترك • افتح الأقسام');
     const root = text('div', null, 'advanced-body');
     details.append(summary, root);
-    const state = { tab: 'overview', info: null, busy: false, ruleDraft: null };
+    const state = { tab: 'overview', info: null, infoTime: 0, busy: false, ruleDraft: null };
+    panelStates.set(details, state);
 
     const message = (msg, error = false) => {
       const n = root.querySelector('.advanced-message');
@@ -108,6 +148,7 @@
       try {
         const info = await json(endpoint(device) + '/settings');
         state.info = info;
+        state.infoTime = Date.now();
         state.ruleDraft = null;
         render();
       } catch (e) {
@@ -124,6 +165,7 @@
         const data = await post(endpoint(device) + '/settings', payload);
         if (!data.confirmed) throw Error('تعذر تأكيد الحفظ');
         state.info = await json(endpoint(device) + '/settings');
+        state.infoTime = Date.now();
         state.ruleDraft = null;
         state.busy = false;
         render();
@@ -225,6 +267,9 @@
         row.append(text('span', 'مخرج ' + (i + 1)));
         const hours = field(row, 'ساعات', 'number', Math.floor(v / 60), { min: 0, max: 24, step: 1 });
         const mins = field(row, 'دقائق', 'number', v % 60, { min: 0, max: 59, step: 1 });
+        const countdown = text('small', '', 'advanced-countdown');
+        countdown.dataset.channel = String(i);
+        row.append(countdown);
         form.append(row);
         return [hours, mins];
       });
@@ -233,8 +278,10 @@
         timer_minutes: inputs.map(([h, m]) => Number(h.value) * 60 + Number(m.value))
       })));
       const d = state.info.device;
-      if (d?.timer_running != null) note(root, 'الحالة الحالية: Mask ' + d.timer_running +
-        ' • المدة الباقية بتتغير مع الوقت؛ الداشبورد المحلية تعرض عدّادًا مستمرًا.');
+      if (d?.timer_running != null) {
+        note(root, 'الوقت المتبقي بيُحسب من ساعة المشترك المرسلة عبر HTTP API ويتم تحديثه كل ثانية.');
+        updateTimerDisplays(details, state);
+      }
     }
 
     function schedules() {
