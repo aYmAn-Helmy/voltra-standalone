@@ -5,6 +5,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { ApiError } from './manager.mjs';
 import { StandaloneService } from './standalone-service.mjs';
 import { FWR_CAP } from './standalone-firmware.mjs';
+import { LiveHub } from './live-hub.mjs';
 
 function secureEqual(a, b) {
   const x = Buffer.from(a); const y = Buffer.from(b);
@@ -68,7 +69,8 @@ function checkOrigin(req) {
 }
 export function createHttpServer({ manager, user = 'admin', password = '', publicDir }) {
   const standalone = new StandaloneService(manager);
-  return createServer(async (req, res) => {
+  const liveHub = new LiveHub(manager);
+  const server = createServer(async (req, res) => {
     try {
       if (!authorized(req, user, password)) {
         res.setHeader('WWW-Authenticate', 'Basic realm="Voltra Standalone", charset="UTF-8"');
@@ -78,12 +80,22 @@ export function createHttpServer({ manager, user = 'admin', password = '', publi
       const method = req.method ?? 'GET';
       if (method !== 'GET') checkOrigin(req);
       if (method === 'GET' && path === '/health') return send(res, 200, { ok: true });
-      if (method === 'GET' && path === '/api/status') return send(res, 200, await manager.status());
+      if (method === 'GET' && path === '/api/status') {
+        const current = await manager.status();
+        liveHub.sync();
+        return send(res, 200, current);
+      }
+      if (method === 'GET' && path === '/api/live/events') {
+        try { liveHub.addClient(res); }
+        catch (error) { return send(res, 503, { error: error.message }); }
+        return;
+      }
       if (method === 'GET' && path === '/api/bridges') return send(res, 200, manager.list());
       if (method === 'POST' && path === '/api/bridges') return send(res, 201, await manager.add(await readJson(req)));
       let m = path.match(/^\/api\/bridges\/([^/]+)$/);
       if (method === 'DELETE' && m) {
-        await manager.remove(id(m[1])); return send(res, 200, { ok: true });
+        await manager.remove(id(m[1])); liveHub.sync();
+        return send(res, 200, { ok: true });
       }
       m = path.match(/^\/api\/bridges\/([^/]+)\/qr\.svg$/);
       if (method === 'GET' && m) return send(res, 200,
@@ -151,4 +163,6 @@ export function createHttpServer({ manager, user = 'admin', password = '', publi
       return send(res, e instanceof ApiError ? e.status : 502, { error: e.message ?? 'Unexpected error' });
     }
   });
+  server.on('close', () => liveHub.close());
+  return server;
 }
