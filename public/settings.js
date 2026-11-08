@@ -116,7 +116,7 @@
     const panel = [...document.querySelectorAll('details.device-advanced')]
       .find(el => el.dataset.deviceKey === key);
     const panelState = panel && panelStates.get(panel);
-    if (panelState?.info && d.timerEnd) {
+    if (panelState?.info?.status && d.timerEnd) {
       panelState.info.device.timer_running = d.timerRunning;
       panelState.info.device.timer_end = d.timerEnd;
       panelState.info.status.uptime_ms = d.uptimeMs;

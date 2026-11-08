@@ -33,10 +33,13 @@ export class StandaloneService {
       try { return await this.manager.request(bridgeId, path); }
       catch { return null; }
     };
-    const [status, device, firmware, memory, energy] = await Promise.all([
-      optional('/api/status'), optional('/api/device'),
-      optional('/api/firmware/status'), optional('/api/memory'), optional('/api/energy')
-    ]);
+    // The strip's embedded HTTP server has very limited connection capacity.
+    // Query in sequence rather than launching five simultaneous requests.
+    const status = await optional('/api/status');
+    const device = await optional('/api/device');
+    const firmware = await optional('/api/firmware/status');
+    const memory = await optional('/api/memory');
+    const energy = await optional('/api/energy');
     // Firmware doesn't return plaintext Wi-Fi or MQTT password through its config API.
     return { config: c, schedule, status, device, firmware, memory, energy };
   }
