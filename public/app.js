@@ -38,6 +38,9 @@ async function act(path, method = 'POST', body) {
     opts.body = JSON.stringify(body);
   }
   const result = await api(path, opts);
+  // An old firmware snapshot must not undo a newly confirmed command while
+  // waiting for the following SSE frame.
+  globalThis.VoltraLive?.invalidateCommand(path);
   await refresh();
   return result;
 }

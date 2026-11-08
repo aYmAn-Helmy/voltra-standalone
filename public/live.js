@@ -66,8 +66,8 @@
       relays.set(id, envelope);
       applyRelay(d, r);
     } else if (type === 'device') {
-      rawStates.set(id, envelope);
       if (!applyDevice(d, envelope.snapshot, envelope.at)) return false;
+      rawStates.set(id, envelope);
     } else return false;
     d.streamConnected = true;
     d.liveAt = envelope.at;
@@ -136,6 +136,16 @@
     }
     states.clear();
   }
+  function invalidate(bridgeId, deviceId) {
+    const id = key(bridgeId, deviceId);
+    rawStates.delete(id);
+    relays.delete(id);
+  }
+  function invalidateCommand(path) {
+    const m = path.match(/^\/api\/bridges\/([^/]+)\/devices\/([^/]+)\//);
+    if (!m) return;
+    try { invalidate(decodeURIComponent(m[1]), decodeURIComponent(m[2])); } catch {}
+  }
   function liveCount() { return [...states.values()].filter(x => x.connected).length; }
-  globalThis.VoltraLive = { start, stop, receive, hydrate, liveCount, states };
+  globalThis.VoltraLive = { start, stop, receive, hydrate, liveCount, invalidate, invalidateCommand, states };
 })();

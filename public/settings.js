@@ -116,7 +116,7 @@
     const panel = [...document.querySelectorAll('details.device-advanced')]
       .find(el => el.dataset.deviceKey === key);
     const panelState = panel && panelStates.get(panel);
-    if (panelState?.info?.status && d.timerEnd) {
+    if (panelState?.info?.status && panelState.info.device && d.timerEnd) {
       panelState.info.device.timer_running = d.timerRunning;
       panelState.info.device.timer_end = d.timerEnd;
       if (Number.isInteger(d.uptimeMs) && panelState.lastSeenUptime !== d.uptimeMs) {
@@ -178,6 +178,7 @@
         state.busy = false;
         render();
         message('✓ تم حفظ الإعدادات والتأكد منها على الجهاز');
+        globalThis.VoltraLive?.invalidate(device.bridgeId, device.id);
         if (onRefresh) onRefresh();
       } catch (e) {
         state.busy = false;
