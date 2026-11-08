@@ -127,10 +127,18 @@
         return item;
       } catch (e) {
         const old = cached.get(source.id);
+        // Firmware's embedded server can drop an HTTP poll while native SSE
+        // still carries fresh device/relay events. Don't mark a live device
+        // offline merely because a secondary polling socket was busy.
+        const nativeStream = [...(window.VoltraLive?.states || [])].some(
+          ([key, state]) => key.startsWith(source.id + ':') && state.connected === true
+        );
         return { ...source, type: old?.type || 'unknown',
-          online: false, error: e.message, lastSyncAt: old?.lastSyncAt || null,
-          commissioning: null, devices: (old?.devices || []).map(d => ({
-            ...d, reachable: false, controlAvailable: false
+          online: nativeStream, error: nativeStream ? null : e.message,
+          lastSyncAt: old?.lastSyncAt || null, commissioning: null,
+          devices: (old?.devices || []).map(d => ({
+            ...d, reachable: nativeStream,
+            controlAvailable: nativeStream ? d.controlAvailable : false
           })) };
       }
     }));
