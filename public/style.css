@@ -144,3 +144,8 @@ dialog::backdrop{background:#000c}.qr-content{text-align:center;min-width:270px}
   .outlet-state{position:static;margin-top:4px}
   .outlet-lock{margin-bottom:5px}
   .stream-summary{width:100%;justify-content:center}}
+
+.advanced-stream-state{float:left;margin-inline-start:8px;border:1px solid #526074;
+  border-radius:999px;padding:2px 9px;background:#142636;color:#b7c6d3;
+  font:750 10px/1.7 system-ui}
+.advanced-stream-state.connected{color:#55e5aa;border-color:#218567;background:#0e3629}

@@ -17,7 +17,7 @@ The app automatically detects the upstream API: Standalone firmware uses each st
 - Responsive dark UI inspired by the original local dashboard.
 - Protect the dashboard with HTTP Basic authentication when exposed beyond localhost.
 
-**Per-device management panels** are now available directly inside every Standalone strip card (expand **⚙️ إدارة كل إعدادات المشترك**). The panel supports names, physical button locks, timers, scheduler rules, protection thresholds, MQTT settings, Wi-Fi scanning/reconfiguration, diagnostics, and guarded FWR OTA. Automatic LAN discovery and live SSE streaming are not implemented. The original local dashboard remains available as a fallback.
+**Per-device management panels** are now available directly inside every Standalone strip card (expand **⚙️ إدارة كل إعدادات المشترك**). The panel supports names, physical button locks, timers, scheduler rules, protection thresholds, MQTT settings, Wi-Fi scanning/reconfiguration, diagnostics, and guarded FWR OTA. Automatic LAN discovery is not implemented; however **native SSE live streaming is supported**. The central server opens at most one upstream `/api/events` stream per physical Standalone strip and forwards firmware `relay` and `device` events to multiple authenticated Voltra browser dashboards through a shared `/api/live/events` endpoint. Device cards receive immediate readings and relay changes while keeping open settings forms intact. If the original strip dashboard already occupies the firmware's single SSE slot, Voltra gracefully falls back to HTTP refresh (every 30 seconds). Connections reconnect with backoff and timeouts. The original local dashboard remains available as a fallback.
 
 ## Start with Node.js 20+
 
@@ -99,3 +99,14 @@ All routes are subject to Voltra's authentication and same-origin checks:
 ## Local verification
 
 Run `npm test` with Node.js 20+. Tests cover binary config encoding, scheduler round-trips, validation, FWR format, settings confirmation after lost responses, Wi-Fi scan, and authentication. Full end-to-end behavior must still be confirmed with a physical MTTL-W01 on a trusted LAN.
+
+## Live SSE and card updates
+
+See [the SSE architecture and troubleshooting guide](docs/live-sse.md).
+
+- A direct firmware `device` event updates channel name, outlet power/energy/current/temperature, total power, protection state and timer state.
+- A direct firmware `relay` event updates each channel's actual logical relay state as reported by the firmware, without requiring an HTTP poll.
+- Per-device and per-bridge live badges show `SSE مباشر` or `HTTP احتياطي`. Browser event/session logs are bounded and local to the browser; no passwords are logged.
+- SSE updates modify the visible widgets in place; open settings forms and unsaved values are preserved.
+- A new Voltra browser tab reuses the server's existing physical device SSE stream, so it doesn't consume the firmware's single SSE slot twice.
+- The full source/online status and MatterBridge data still update via HTTP; firmware SSE applies only to compatible direct Standalone devices.
