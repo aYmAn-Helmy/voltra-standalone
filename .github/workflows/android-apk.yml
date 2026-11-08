@@ -27,14 +27,20 @@ jobs:
           gradle-version: '8.10.2'
       - name: Compile installable APK
         run: gradle -p android :app:assembleDebug --no-daemon --stacktrace
-      - name: Verify package
+      - name: Verify APK contains the full offline UI
         run: |
-          test -s android/app/build/outputs/apk/debug/app-debug.apk
-          ls -lh android/app/build/outputs/apk/debug/app-debug.apk
+          file=android/app/build/outputs/apk/debug/app-debug.apk
+          test -s "$file"
+          for asset in index.html app.js settings.js live.js mobile.js style.css; do
+            unzip -Z1 "$file" | grep -Fx "assets/$asset"
+          done
+          unzip -Z1 "$file" | grep -Fx classes.dex
+          cp "$file" android/app/build/outputs/apk/debug/Voltra-Standalone.apk
+          ls -lh android/app/build/outputs/apk/debug/Voltra-Standalone.apk
       - uses: actions/upload-artifact@v4
         with:
           name: Voltra-Standalone-Android-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/debug/Voltra-Standalone.apk
           retention-days: 90
       - name: Attach APK to GitHub preview release
         if: github.event_name == 'push'
@@ -42,10 +48,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag=android-preview-v0.1.0
-          path=android/app/build/outputs/apk/debug/app-debug.apk
+          path=android/app/build/outputs/apk/debug/Voltra-Standalone.apk
           if ! gh release view "$tag" >/dev/null 2>&1; then
             gh release create "$tag" --prerelease --title 'Voltra Standalone Android (Preview)' \
               --notes 'Installable debug APK for local Wi-Fi discovery and full standalone device controls. Not yet validated on physical hardware. Uses local LAN HTTP (no cloud). Debug signing keys may change between builds.' \
               --target "$GITHUB_SHA"
           fi
-          gh release upload "$tag" "$path#Voltra-Standalone.apk" --clobber
+          gh release upload "$tag" "$path" --clobber
+          gh release delete-asset "$tag" app-debug.apk --yes || true
