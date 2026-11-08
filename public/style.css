@@ -149,3 +149,10 @@ dialog::backdrop{background:#000c}.qr-content{text-align:center;min-width:270px}
   border-radius:999px;padding:2px 9px;background:#142636;color:#b7c6d3;
   font:750 10px/1.7 system-ui}
 .advanced-stream-state.connected{color:#55e5aa;border-color:#218567;background:#0e3629}
+
+.power-trend{margin-top:14px;border:1px solid #244b46;border-radius:11px;
+  background:linear-gradient(90deg,#102a26 0%,#0a1b28 100%);padding:11px 14px 7px}
+.power-trend-header{display:flex;justify-content:space-between;align-items:center;
+  gap:12px;color:#a2c5bc;font-size:11px;margin-bottom:4px}
+.power-trend-header strong{color:#65e6b0;font-size:14px;direction:ltr;white-space:nowrap}
+.power-canvas{width:100%;height:64px;max-width:100%;display:block}
