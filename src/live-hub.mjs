@@ -55,6 +55,7 @@ export class LiveHub {
     this.retryMax = retryMax;
     this.clients = new Set();
     this.sources = new Map();
+    this.heartbeatTimer = null;
     this.closed = false;
   }
 
@@ -84,6 +85,16 @@ export class LiveHub {
     });
     res.flushHeaders?.();
     this.clients.add(res);
+    if (!this.heartbeatTimer) {
+      // Keep intermediate HTTP proxies from buffering/closing idle SSE responses.
+      this.heartbeatTimer = setInterval(() => {
+        for (const client of this.clients) {
+          if (!this.event(client, 'ping', { at: now() })) this.clients.delete(client);
+        }
+        if (!this.clients.size) this.stopAll();
+      }, 15000);
+      this.heartbeatTimer.unref?.();
+    }
     this.event(res, 'hello', { connected: true, at: new Date().toISOString() });
     const done = () => {
       this.clients.delete(res);
@@ -127,10 +138,18 @@ export class LiveHub {
     clearTimeout(entry.watchdog);
     entry.controller?.abort();
   }
-  stopAll() { for (const id of [...this.sources.keys()]) this.stop(id); }
+  stopAll() {
+    for (const id of [...this.sources.keys()]) this.stop(id);
+    if (!this.clients.size) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
+  }
   close() {
     this.closed = true;
     this.stopAll();
+    clearInterval(this.heartbeatTimer);
+    this.heartbeatTimer = null;
     for (const res of this.clients) res.end();
     this.clients.clear();
   }
