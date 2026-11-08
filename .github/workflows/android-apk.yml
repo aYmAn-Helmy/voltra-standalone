@@ -1,0 +1,52 @@
+name: Build Voltra Android APK
+on:
+  push:
+    branches: [feat/android-apk-autodiscovery]
+    paths:
+      - 'android/**'
+      - 'public/**'
+      - '.github/workflows/android-apk.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Compile installable APK
+        run: gradle -p android :app:assembleDebug --no-daemon --stacktrace
+      - name: Verify package
+        run: |
+          test -s android/app/build/outputs/apk/debug/app-debug.apk
+          ls -lh android/app/build/outputs/apk/debug/app-debug.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Voltra-Standalone-Android-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 90
+      - name: Attach APK to GitHub preview release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=android-preview-v0.1.0
+          path=android/app/build/outputs/apk/debug/app-debug.apk
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --prerelease --title 'Voltra Standalone Android (Preview)' \
+              --notes 'Installable debug APK for local Wi-Fi discovery and full standalone device controls. Not yet validated on physical hardware. Uses local LAN HTTP (no cloud). Debug signing keys may change between builds.' \
+              --target "$GITHUB_SHA"
+          fi
+          gh release upload "$tag" "$path#Voltra-Standalone.apk" --clobber
