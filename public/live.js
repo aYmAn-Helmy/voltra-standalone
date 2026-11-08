@@ -3,7 +3,7 @@
 (() => {
   'use strict';
 
-  const states = new Map(), rawStates = new Map(), relays = new Map();
+  const states = new Map(), rawStates = new Map(), relays = new Map(), history = new Map();
   let stream = null, callback = () => {}, connection = () => {};
   const key = (bridgeId, deviceId) => bridgeId + ':' + deviceId;
   const scaled = (x, factor) => typeof x === 'number' && Number.isFinite(x) ? x / factor : null;
@@ -68,6 +68,13 @@
     } else if (type === 'device') {
       if (!applyDevice(d, envelope.snapshot, envelope.at)) return false;
       rawStates.set(id, envelope);
+      const watts = d.outlets.reduce((sum, o) => sum + (o.powerW ?? 0), 0);
+      const samples = history.get(id) || [];
+      if (!samples.length || envelope.at - samples[samples.length - 1].at >= 1000) {
+        samples.push({ at: envelope.at, powerW: watts });
+        if (samples.length > 60) samples.shift();
+        history.set(id, samples);
+      }
     } else return false;
     d.streamConnected = true;
     d.liveAt = envelope.at;
@@ -146,6 +153,10 @@
     if (!m) return;
     try { invalidate(decodeURIComponent(m[1]), decodeURIComponent(m[2])); } catch {}
   }
+  function samples(bridgeId, deviceId) {
+    return (history.get(key(bridgeId, deviceId)) || []).slice();
+  }
   function liveCount() { return [...states.values()].filter(x => x.connected).length; }
-  globalThis.VoltraLive = { start, stop, receive, hydrate, liveCount, invalidate, invalidateCommand, states };
+  globalThis.VoltraLive = { start, stop, receive, hydrate, liveCount, invalidate,
+    invalidateCommand, samples, states };
 })();
