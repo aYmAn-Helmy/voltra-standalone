@@ -7,8 +7,8 @@ test('protects APIs with Basic auth and forwards outlet commands safely', async 
   const manager = {
     status: async () => ({ bridges: [], devices: [], summary: {} }),
     list: () => [],
-    request: async (id, path, options) => {
-      calls.push({ id, path, options });
+    setOutlet: async (id, deviceId, index, on) => {
+      calls.push({ id, deviceId, index, on });
       return { ok: true };
     }
   };
@@ -30,8 +30,7 @@ test('protects APIs with Basic auth and forwards outlet commands safely', async 
     assert.equal(response.status, 200);
     assert.equal(calls.length, 1);
     assert.deepEqual(calls[0], {
-      id: 'office', path: '/devices/AABBCCDDEEFF/outlets/1/state',
-      options: { method: 'POST', body: { on: true } }
+      id: 'office', deviceId: 'AABBCCDDEEFF', index: 1, on: true
     });
     const bad = await fetch(base + '/api/bridges/office/devices/AABBCCDDEEFF/outlets/5/state', {
       method: 'POST', headers: { Authorization: auth, 'Content-Type': 'application/json' },

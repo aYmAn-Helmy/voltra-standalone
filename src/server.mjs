@@ -83,15 +83,12 @@ export function createHttpServer({ manager, user = 'admin', password = '', publi
         if (!Number.isInteger(index) || index < 1 || index > 4) throw new ApiError('Invalid outlet index');
         const body = await readJson(req);
         if (typeof body.on !== 'boolean') throw new ApiError('on must be boolean');
-        return send(res, 200, await manager.request(id(m[1]), '/devices/' + id(m[2], 40) +
-          '/outlets/' + index + '/state', { method: 'POST', body: { on: body.on } }));
+        return send(res, 200, await manager.setOutlet(id(m[1]), id(m[2], 40), index, body.on));
       }
       m = path.match(/^\/api\/bridges\/([^/]+)\/devices\/([^/]+)\/refresh$/);
-      if (method === 'POST' && m) return send(res, 200,
-        await manager.request(id(m[1]), '/devices/' + id(m[2], 40) + '/refresh', { method: 'POST', body: {} }));
+      if (method === 'POST' && m) return send(res, 200, await manager.refreshDevice(id(m[1]), id(m[2], 40)));
       m = path.match(/^\/api\/bridges\/([^/]+)\/devices\/([^/]+)$/);
-      if (method === 'DELETE' && m) return send(res, 200,
-        await manager.request(id(m[1]), '/devices/' + id(m[2], 40), { method: 'DELETE' }));
+      if (method === 'DELETE' && m) return send(res, 200, await manager.removeDevice(id(m[1]), id(m[2], 40)));
       const staticFiles = {
         '/': ['index.html', 'text/html; charset=utf-8'],
         '/app.js': ['app.js', 'text/javascript; charset=utf-8'],
