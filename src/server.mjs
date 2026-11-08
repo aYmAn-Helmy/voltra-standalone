@@ -153,6 +153,7 @@ export function createHttpServer({ manager, user = 'admin', password = '', publi
         '/': ['index.html', 'text/html; charset=utf-8'],
         '/app.js': ['app.js', 'text/javascript; charset=utf-8'],
         '/live.js': ['live.js', 'text/javascript; charset=utf-8'],
+        '/mobile.js': ['mobile.js', 'text/javascript; charset=utf-8'],
         '/settings.js': ['settings.js', 'text/javascript; charset=utf-8'],
         '/style.css': ['style.css', 'text/css; charset=utf-8']
       };
