@@ -98,7 +98,7 @@ export function createHttpServer({ manager, user = 'admin', password = '', publi
       m = path.match(/^\/api\/bridges\/([^/]+)\/devices\/([^/]+)\/outlets\/(\d+)\/state$/);
       if (method === 'POST' && m) {
         const index = Number(m[3]);
-        if (!Number.isInteger(index) || index < 1 || index > 4) throw new ApiError('Invalid outlet index');
+        if (!Number.isInteger(index) || index < 1 || index > 5) throw new ApiError('Invalid outlet index');
         const body = await readJson(req);
         if (typeof body.on !== 'boolean') throw new ApiError('on must be boolean');
         return send(res, 200, await manager.setOutlet(id(m[1]), id(m[2], 40), index, body.on));

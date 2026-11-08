@@ -214,6 +214,7 @@ export class BridgeManager {
   async setOutlet(bridgeId, deviceId, index, on) {
     const source = await this.sourceForDevice(bridgeId, deviceId);
     if (source.type !== 'standalone') {
+      if (index === 5) throw new ApiError('All-on/off requires direct Standalone firmware', 400);
       return this.request(bridgeId, '/devices/' + encodeURIComponent(deviceId) +
         '/outlets/' + index + '/state', { method: 'POST', body: { on } });
     }
@@ -244,7 +245,9 @@ export class BridgeManager {
       let current;
       try { current = await this.request(bridgeId, '/api/device'); }
       catch { continue; }
-      if (current?.channels?.[index - 1]?.on === on) return { ok: true, confirmed: true };
+      if (index === 5 && current?.channels?.length === 4 &&
+        current.channels.every(c => c.on === on)) return { ok: true, confirmed: true };
+      if (index !== 5 && current?.channels?.[index - 1]?.on === on) return { ok: true, confirmed: true };
     }
     throw new ApiError('Control accepted but not confirmed; refresh before retrying', 504);
   }

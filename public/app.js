@@ -193,6 +193,18 @@ function renderDevices(data) {
     const actions = el('div', 'device-actions');
     actions.append(el('span', 'state ' + (d.reachable ? 'online' : 'offline'), d.reachable ? '● Online' : '● Offline'));
     actions.append(button('↻ تحديث', 'tiny secondary', () => deviceRefresh(d), !d.reachable));
+    if (d.sourceType === 'standalone') {
+      const all = on => {
+        if (!confirm((on ? 'تشغيل' : 'إيقاف') + ' كل مخارج ' + d.name + '؟')) return;
+        act(pathFor(d.bridgeId, d.id) + '/outlets/5/state', 'POST', { on })
+          .then(() => notify('تم تأكيد حالة كل المخارج'))
+          .catch(e => notify(e.message, true));
+      };
+      actions.append(button('تشغيل الكل', 'tiny primary', () => all(true),
+        !d.reachable || d.controlAvailable === false));
+      actions.append(button('إيقاف الكل', 'tiny danger', () => all(false),
+        !d.reachable || d.controlAvailable === false));
+    }
     if (!d.reachable && d.sourceType !== 'standalone') actions.append(button('حذف الجهاز', 'tiny danger', () => removeDevice(d)));
     head.append(info, actions); card.append(head);
     const outlets = el('div', 'outlets');
