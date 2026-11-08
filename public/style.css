@@ -111,3 +111,36 @@ dialog::backdrop{background:#000c}.qr-content{text-align:center;min-width:270px}
   padding:12px;background:#07111f;color:#d8edf9;border:1px solid var(--line);border-radius:10px;font:12px/1.7 ui-monospace,monospace}
 
 .advanced-countdown{display:block;font:12px ui-monospace,monospace;color:var(--mint);align-self:center;min-width:180px}
+
+
+/* SSE live indicators and richer standalone card telemetry. */
+.stream-summary{display:inline-flex;align-items:center;border:1px solid #415267;color:#a2b6c8;
+  padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;background:#152236}
+.stream-summary.connected{border-color:#1e725d;color:#62f5bd;background:#14392e}
+.bridge-stream{display:inline-block;padding:4px 7px;margin-bottom:8px;border-radius:7px;
+  background:#1c2735;color:#a8bacc;font:700 11px system-ui}
+.bridge-stream.connected{color:#55efb7;background:#123e32}
+.device-live-label{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;
+  color:#b1c3d1;background:#17283b;border:1px solid #345066;border-radius:999px;
+  font-size:11px;font-weight:750;white-space:nowrap}
+.device-live-label.connected{background:#113e32;border-color:#247e61;color:#6df5c0}
+.device-live{border-color:#235c50;box-shadow:0 0 0 1px #1d634424}
+.device-live-telemetry{color:#9be4cc;font-size:12px;font-weight:550;margin:8px 0 2px;
+  direction:ltr;text-align:right;line-height:1.6}
+.outlet{position:relative;transition:border-color .15s,background .15s}
+.outlet-on{border-color:#237660;background:linear-gradient(150deg,#102e29 0%,#101e2e 90%)}
+.outlet-state{position:absolute;inset-inline-end:11px;bottom:10px;display:inline-block;
+  border:1px solid #426075;border-radius:6px;padding:0 5px;font:700 10px/1.8 system-ui;
+  color:#9baabb}
+.outlet-on .outlet-state{background:#123e32;color:#5ee6ad;border-color:#227c5d}
+.outlet-lock{font-size:10px;color:#92a8bc;padding:4px 0;margin-bottom:18px;
+  overflow-wrap:anywhere}
+.outlet-on .measure{color:#aaf7d5}
+.device-advanced>summary{background:linear-gradient(90deg,#0e302b,#102236)}
+.device-advanced[open]{border-color:#318575}
+.advanced-data{transition:border-color .2s}.advanced-data:hover{border-color:#42738a}
+.advanced-form input:focus,.advanced-form select:focus{border-color:var(--mint)}
+@media(max-width:600px){.device-live-telemetry{direction:auto;text-align:right;font-size:11px}
+  .outlet-state{position:static;margin-top:4px}
+  .outlet-lock{margin-bottom:5px}
+  .stream-summary{width:100%;justify-content:center}}
