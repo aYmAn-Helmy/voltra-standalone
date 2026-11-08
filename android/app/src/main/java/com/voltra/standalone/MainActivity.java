@@ -131,7 +131,18 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onResume() {
         super.onResume();
-        // JavaScript resumes the streams when the browser becomes visible.
+        if (gateway != null) {
+            // Android can pause the native socket without WebView firing a
+            // visibilitychange event. Restart native streams explicitly.
+            jobs.execute(() -> {
+                try { gateway.dispatch("startStreams", new JSONObject()); }
+                catch (Exception ignored) {}
+            });
+            if (web != null) web.post(() -> web.evaluateJavascript(
+                "if(window.VoltraLive && window.onLiveEvent) {" +
+                " window.VoltraLive.start(window.onLiveEvent, window.patchSourceIndicator);" +
+                "}", null));
+        }
     }
     @Override protected void onDestroy() {
         if (gateway != null) gateway.close();
