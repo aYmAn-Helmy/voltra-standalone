@@ -12,7 +12,7 @@ export function standaloneDevice(source, status, device, version) {
   return {
     id: status.mac.replaceAll(':', '').toUpperCase(),
     name: device.name || source.name,
-    sourceType: 'standalone',
+    sourceType: 'standalone', sourceUrl: source.url,
     firmwareVersion: version?.version || 'Standalone',
     reachable: status.state === 5,
     controlAvailable: status.state === 5 && status.hardware_ready === true && device.hardware_ready === true,

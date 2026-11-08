@@ -162,7 +162,11 @@ async function removeDevice(d) {
   catch (e) { notify(e.message, true); }
 }
 function renderDevices(data) {
-  const target = $('device-list'); reset(target);
+  const target = $('device-list');
+  // Preserve expanded management panels and unsaved inputs across 5-second polling.
+  const savedPanels = new Map([...target.querySelectorAll('details.device-advanced')]
+    .map(panel => [panel.dataset.deviceKey, panel]));
+  reset(target);
   const query = $('search').value.trim().toLowerCase();
   const source = $('bridge-filter').value, status = $('status-filter').value;
   const devices = data.devices.filter(d =>
@@ -194,6 +198,11 @@ function renderDevices(data) {
     const outlets = el('div', 'outlets');
     for (const o of d.outlets) outlets.append(drawOutlet(d, o));
     card.append(outlets);
+    if (d.sourceType === 'standalone') {
+      const key = d.bridgeId + ':' + d.id;
+      const panel = savedPanels.get(key) || globalThis.VoltraSettings.create(d, refresh);
+      card.append(panel);
+    }
     target.append(card);
   }
 }
