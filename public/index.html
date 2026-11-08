@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#07111f">
+  <title>Voltra Standalone — Control Center</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/live.js" defer></script>
+  <script src="/settings.js" defer></script>
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand"><div class="mark">ϟ</div><div><h1>VOLTRA <span>STANDALONE</span></h1><p>مركز التحكم الموحد في المشتركات الذكية</p></div></div>
+      <div class="top-actions"><div class="health"><span id="health-dot" class="dot"></span><span id="health">جارٍ الاتصال...</span></div><button id="refresh-all" class="btn secondary" type="button">↻ تحديث الكل</button></div>
+    </header>
+    <section class="stats" aria-label="ملخص الأجهزة">
+      <div class="stat panel"><p>إجمالي المشتركات</p><strong id="stat-devices">—</strong><small id="stat-online">—</small></div>
+      <div class="stat panel"><p>مصادر الاتصال</p><strong id="stat-bridges">—</strong><small id="stat-bridges-online">—</small></div>
+      <div class="stat panel"><p>القدرة الحالية</p><strong id="stat-power">—</strong><small>Watt — للأجهزة المتصلة</small></div>
+      <div class="stat panel"><p>الطاقة التراكمية</p><strong id="stat-energy">—</strong><small>Wh — من عدادات الأجهزة المتصلة</small></div>
+    </section>
+    <div class="layout">
+      <aside class="sidebar">
+        <section class="panel side-panel">
+          <p class="eyebrow">BRIDGE CONNECTIONS</p>
+          <h2>المشتركات ومصادر الربط</h2>
+          <p class="hint">ضيف IP أي مشترك Standalone مباشرة، أو ضيف سيرفر MatterBridge عليه كذا مشترك.</p>
+          <div id="bridge-list" class="bridge-list"><div class="empty compact">جارٍ تحميل المصادر...</div></div>
+        </section>
+        <section class="panel side-panel">
+          <p class="eyebrow">ADD BRIDGE</p>
+          <h2>إضافة مشترك أو Bridge</h2>
+          <form id="bridge-form">
+            <label for="bridge-name">اسم المصدر</label>
+            <input id="bridge-name" name="name" maxlength="64" required placeholder="مثال: مكتب الإدارة">
+            <label for="bridge-url">رابط المشترك أو الـBridge</label>
+            <input id="bridge-url" name="url" type="url" required inputmode="url" dir="ltr" placeholder="http://192.168.0.55">
+            <button class="btn primary wide" id="add-bridge" type="submit">+ إضافة مشترك / Bridge</button>
+          </form>
+          <p class="hint tip">Standalone: الـIP مباشر على port 80. MatterBridge: عنوان السيرفر مع :8086. لازم Voltra تقدر توصل للجهاز على نفس الشبكة.</p>
+        </section>
+      </aside>
+      <main class="panel main-panel">
+        <div class="devices-head">
+          <div><p class="eyebrow">DEVICE MANAGEMENT</p><h2>المشتركات المتصلة <span id="device-count" class="count">0</span></h2></div>
+          <div class="filters"><input id="search" type="search" placeholder="بحث بالاسم أو MAC أو Firmware" aria-label="بحث الأجهزة"><select id="bridge-filter" aria-label="فلترة حسب Bridge"><option value="all">كل المصادر</option></select><select id="status-filter" aria-label="فلترة حسب الحالة"><option value="all">كل الحالات</option><option value="online">Online</option><option value="offline">Offline</option></select></div>
+        </div>
+        <div class="legend"><span><i class="dot small green"></i>Online</span><span><i class="dot small"></i>Offline</span><span id="outlet-count">—</span><span id="stream-summary" class="stream-summary">◌ جاري تهيئة التحديث اللحظي</span></div>
+        <div id="device-list" class="device-list"><div class="empty">مافيش أجهزة للعرض حاليًا.</div></div>
+      </main>
+    </div>
+    <footer>VOLTRA STANDALONE <span>•</span> MTTL-W01 Direct SSE + MatterBridge API <span>•</span> التحكم مرتبط بتوافر السيرفر المحلي</footer>
+  </div>
+  <dialog id="qr-dialog">
+    <div class="qr-content"><h2 id="qr-title">Matter Pairing</h2><p class="hint">امسح الكود من تطبيق Matter</p><img id="qr-image" alt="Matter pairing QR code" width="300" height="300"><p>Manual pairing code</p><strong id="qr-code" dir="ltr">—</strong><form method="dialog"><button class="btn secondary wide">إغلاق</button></form></div>
+  </dialog>
+  <div id="toast" role="status" aria-live="polite" class="toast" hidden></div>
+</body>
+</html>

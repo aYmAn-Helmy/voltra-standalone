@@ -1,0 +1,31 @@
+name: Voltra CI
+on:
+  push:
+    branches:
+      - main
+      - feat/central-dashboard
+  pull_request:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check application syntax
+        run: |
+          node --check src/manager.mjs
+          node --check src/standalone.mjs
+          node --check src/live-hub.mjs
+          node --check src/standalone-config.mjs
+          node --check src/standalone-service.mjs
+          node --check src/standalone-firmware.mjs
+          node --check src/server.mjs
+          node --check src/index.mjs
+          node --check public/app.js
+          node --check public/settings.js
+          node --check public/live.js
+      - name: Run unit tests
+        run: npm test
