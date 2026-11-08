@@ -1,8 +1,8 @@
 # Voltra Standalone
 
-Voltra Standalone is an Arabic-first dashboard that brings together LG MTTL-W01 four-outlet power strips registered with one or more [MTTL-W01 MatterBridge](https://github.com/ttaengz/mttl-w01-matterbridge) servers.
+Voltra Standalone is an Arabic-first dashboard that connects **directly to LG MTTL-W01 strips running compatible [Standalone firmware](https://github.com/af950833/mttl_w01_standalone)**, and also aggregates multiple [MTTL-W01 MatterBridge](https://github.com/ttaengz/mttl-w01-matterbridge) servers.
 
-The linked source project includes a local web dashboard at port 8086. Voltra connects to its supported HTTP API and keeps each original MatterBridge in control of its own devices, power outlets and Matter commissioning.
+The app automatically detects the upstream API: Standalone firmware uses each strip's port **80** (`/api/status`, `/api/device`, `/api/control`), while MatterBridge has its management dashboard on port **8086**.
 
 ## Features in version 0.1
 
@@ -17,7 +17,7 @@ The linked source project includes a local web dashboard at port 8086. Voltra co
 - Responsive dark UI inspired by the original local dashboard.
 - Protect the dashboard with HTTP Basic authentication when exposed beyond localhost.
 
-This version aggregates MatterBridge instances. It does not yet discover power strips independently, reflash them, change Wi-Fi settings, or provide firmware OTA. Those would require a separately verified device protocol/firmware implementation. The ota.icns file linked in the request is an icon asset, not a device API.
+This version supports manually adding supported **Standalone firmware** devices by IP, but it does not yet automatically discover them, remotely change their Wi-Fi or schedules, or perform OTA. For advanced device controls, open its original dashboard via the source card. Device OTA must be done through its local UI, not through Voltra.
 
 ## Start with Node.js 20+
 
@@ -25,7 +25,7 @@ Run:
 
     npm start
 
-Open http://127.0.0.1:8090, click Add Bridge, then supply the address of an **already running** upstream MatterBridge, e.g. http://192.168.1.100:8086.
+Open http://127.0.0.1:8090, click Add Source, then enter the **physical Standalone device IP**, e.g. http://192.168.0.55 (port 80), or an already running **MatterBridge server**, e.g. http://192.168.1.100:8086. Saved sources automatically upgrade to the right type on refresh.
 
 To allow other machines to reach Voltra, set HOST=0.0.0.0 and a strong VOLTRA_PASSWORD in the shell environment. Optionally set VOLTRA_USER, PORT and CONFIG_PATH. Node does not automatically read .env.example.
 
@@ -37,7 +37,7 @@ If you prefer a static starting configuration, copy data/bridges.example.json to
     # Edit .env and set a strong VOLTRA_PASSWORD
     docker compose up --build -d
 
-Open http://SERVER_IP:8090. The Voltra container needs network access to each original MatterBridge HTTP server. It does **not** run the original TCP (10086) or Matter (5540) services; those remain on the source bridge servers.
+Open http://SERVER_IP:8090. The Voltra container needs network access to each original MatterBridge HTTP server. It does **not** run the original TCP (10086) or Matter (5540) services. Standalone-firmware devices do not need these services.
 
 ## Safety
 
@@ -56,3 +56,16 @@ All mutation endpoints use same-origin checks; JSON POST requests use Content-Ty
     npm test
 
 Includes configuration validation, persistence, aggregation and offline-cache tests. Integration with real MTTL-W01 hardware needs to be tested on the local network.
+
+## Supported Standalone firmware (direct IP)
+
+Confirmed source API: [af950833/mttl_w01_standalone](https://github.com/af950833/mttl_w01_standalone) 2.1.x; equivalent 2.0.x APIs may also work. The central dashboard displays device/channel names, outlet power/energy/current/temperature, device voltage/current, RSSI, firmware version, online state and button lock indication. Outlet changes are sent as firmware's 2-byte `/api/control` command with an upstream Origin header, then independently confirmed through `/api/device`. A command is never blindly retried after an ACK.
+
+To configure schedules, protection, timer, names, Wi-Fi, OTA and other features not yet implemented centrally, use the **Open local dashboard** link in the device's source card.
+
+If a saved source still shows offline, run these commands **from the machine or container running Voltra**, substituting the physical strip IP:
+
+    curl http://192.168.0.55/api/status
+    curl http://192.168.0.55/api/device
+
+On supported Standalone firmware the first response contains `state` and `mac`, and the second contains exactly four `channels`. MatterBridge's API instead returns a `devices` array from `http://SERVER_IP:8086/api/status`. Each device must be on a reachable network; Voltra cannot communicate with a device that is not joined to Wi-Fi.
