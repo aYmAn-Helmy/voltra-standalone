@@ -173,11 +173,17 @@ export class BridgeManager {
         return snapshot;
       } catch (error) {
         const last = this.cache.get(b.id);
+        // Firmware has only a small number of HTTP sockets. A live stream is
+        // stronger proof of reachability than a failed incidental HTTP poll.
+        const streaming = last?.type === 'standalone' && this.liveHub?.isLive(b.id) === true;
         return {
-          ...b, type: last?.type ?? 'unknown', online: false,
-          error: error.message, lastSyncAt: last?.lastSyncAt ?? null,
+          ...b, type: last?.type ?? 'unknown', online: streaming,
+          error: streaming ? 'Live SSE active; HTTP snapshot unavailable' : error.message,
+          lastSyncAt: last?.lastSyncAt ?? null,
           commissioning: last?.commissioning ?? null,
-          devices: (last?.devices ?? []).map(d => ({ ...d, reachable: false, controlAvailable: false }))
+          devices: (last?.devices ?? []).map(d => ({
+            ...d, reachable: streaming, controlAvailable: streaming ? d.controlAvailable : false
+          }))
         };
       }
     }));

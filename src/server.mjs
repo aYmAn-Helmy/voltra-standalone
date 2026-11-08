@@ -70,6 +70,7 @@ function checkOrigin(req) {
 export function createHttpServer({ manager, user = 'admin', password = '', publicDir }) {
   const standalone = new StandaloneService(manager);
   const liveHub = new LiveHub(manager);
+  manager.liveHub = liveHub;
   const server = createServer(async (req, res) => {
     try {
       if (!authorized(req, user, password)) {

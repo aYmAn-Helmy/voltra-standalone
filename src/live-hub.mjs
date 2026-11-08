@@ -8,6 +8,8 @@ const WAIT_MAX = 15000;
 const IDLE_MS = 35000;
 const MAX_FRAME = 12000;
 const MAX_CLIENTS = 32;
+const scale = (value, ratio) => typeof value === 'number' && Number.isFinite(value)
+  ? value / ratio : null;
 const now = () => Date.now();
 
 function validDevice(s) {
@@ -108,8 +110,10 @@ export class LiveHub {
     const wanted = new Map();
     for (const bridge of this.manager.bridges) {
       const cached = this.manager.cache.get(bridge.id);
-      const device = cached?.type === 'standalone' && cached.online && cached.devices?.[0];
-      if (device?.id && device.reachable) wanted.set(bridge.id, { bridge, deviceId: device.id });
+      const device = cached?.type === 'standalone' && cached.devices?.[0];
+      // Keep a valid SSE stream across transient HTTP poll failures; reconnect
+      // with MAC checks if an old source is temporarily unavailable.
+      if (device?.id) wanted.set(bridge.id, { bridge, deviceId: device.id });
     }
     for (const [id, entry] of this.sources) {
       const next = wanted.get(id);
@@ -123,11 +127,46 @@ export class LiveHub {
   }
   start(id, url, deviceId) {
     const entry = {
-      id, url, deviceId, active: true, controller: null, retry: this.retryMin,
+      id, url, deviceId, active: true, connected: false, controller: null, retry: this.retryMin,
       timer: null, watchdog: null
     };
     this.sources.set(id, entry);
     void this.connect(entry);
+  }
+  isLive(id) { return this.sources.get(id)?.connected === true; }
+  // Maintain the last known snapshot as events arrive; ordinary HTTP probes
+  // may time out while the embedded firmware is busy streaming.
+  updateCache(entry, kind, data) {
+    const source = this.manager.cache.get(entry.id);
+    const d = source?.devices?.[0];
+    if (source?.type !== 'standalone' || d?.id !== entry.deviceId) return;
+    if (kind === 'device') {
+      if (typeof data.name === 'string' && data.name) d.name = data.name;
+      d.voltageV = scale(data.voltage_dv, 10);
+      d.currentA = scale(data.current_ma, 1000);
+      d.protection = data.protection ?? d.protection;
+      d.timerRunning = data.timer_running ?? d.timerRunning;
+      d.timerEnd = Array.isArray(data.timer_end) ? data.timer_end : d.timerEnd;
+      d.controlAvailable = d.reachable && data.hardware_ready === true;
+      data.channels.forEach((c, i) => {
+        const o = d.outlets?.[i];
+        if (!o) return;
+        if (typeof c.name === 'string' && c.name) o.name = c.name;
+        o.on = typeof c.on === 'boolean' ? c.on : null;
+        o.powerW = scale(c.power_mw, 1000);
+        o.energyWh = scale(c.meter_wh, 1);
+        o.currentA = scale(c.current_ma, 1000);
+        o.temperatureC = scale(c.temp_dc, 10);
+        o.locked = c.locked === true;
+      });
+    } else if (kind === 'relay') {
+      d.outlets?.forEach((outlet, i) => {
+        const bit = 1 << i;
+        outlet.on = data.known & bit ? !!(data.on & bit) : null;
+      });
+      if (data.fault) d.controlAvailable = false;
+    }
+    d.lastLiveAt = now();
   }
   stop(id) {
     const entry = this.sources.get(id);
@@ -184,6 +223,7 @@ export class LiveHub {
         throw Error('Device SSE unavailable (HTTP ' + response.status + ')');
       }
       entry.retry = this.retryMin;
+      entry.connected = true;
       this.emit('source', { bridgeId: id, deviceId: entry.deviceId, connected: true, at: now() });
       reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -194,6 +234,7 @@ export class LiveHub {
         try { data = JSON.parse(raw); } catch { return; }
         if (kind === 'device' && !validDevice(data)) return;
         if (kind === 'relay' && !validRelay(data)) return;
+        this.updateCache(entry, kind, data);
         this.emit(kind, {
           bridgeId: id, deviceId: entry.deviceId, at: now(), snapshot: data
         });
@@ -220,6 +261,7 @@ export class LiveHub {
         });
       }
     } finally {
+      entry.connected = false;
       clearTimeout(entry.watchdog);
       controller.abort();
       if (reader) { try { await reader.cancel(); } catch {} }
