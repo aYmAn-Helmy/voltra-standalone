@@ -180,6 +180,16 @@ async function removeDevice(d) {
 }
 function renderDevices(data) {
   const target = $('device-list');
+  // Do not detach a focused, unsaved settings form on background HTTP refresh.
+  // Device telemetry is patched in place, and any new cards appear on the next
+  // refresh after the user leaves the form.
+  const activeForm = document.activeElement?.closest?.('details.device-advanced');
+  if (activeForm?.open) {
+    for (const d of data.devices) {
+      if (d.sourceType === 'standalone') patchLiveCard(d);
+    }
+    return;
+  }
   // Preserve expanded management panels and unsaved inputs across 5-second polling.
   const savedPanels = new Map([...target.querySelectorAll('details.device-advanced')]
     .map(panel => [panel.dataset.deviceKey, panel]));
@@ -201,6 +211,11 @@ function renderDevices(data) {
     const card = el('article', 'device'), head = el('div', 'device-head');
     card.dataset.deviceKey = d.bridgeId + ':' + d.id;
     card.classList.toggle('device-live', !!d.streamConnected);
+  const status = card.querySelector('.device-actions .state');
+  if (status) {
+    status.textContent = d.reachable ? '● Online' : '● Offline';
+    status.className = 'state ' + (d.reachable ? 'online' : 'offline');
+  }
     const info = el('div');
     info.append(el('h3', 'device-title', d.name));
     details(info, 'MAC / ID: ' + d.id + '   •   FW: ' + (d.firmwareVersion || '—') + '   •   Source: ' + d.bridgeName);
@@ -239,11 +254,23 @@ function renderDevices(data) {
     for (const o of d.outlets) outlets.append(drawOutlet(d, o));
     card.append(outlets);
     if (d.sourceType === 'standalone') {
+      const trend = el('div', 'power-trend');
+      const head = el('div', 'power-trend-header');
+      head.append(el('span', '', '⚡ اتجاه القدرة • آخر 60 قراءة'), el('strong', 'power-trend-value', 'في انتظار SSE'));
+      const canvas = el('canvas', 'power-canvas');
+      canvas.width = 360; canvas.height = 64;
+      canvas.setAttribute('role', 'img');
+      canvas.setAttribute('aria-label', 'تاريخ قصير لاستهلاك القدرة من أحداث SSE');
+      trend.append(head, canvas);
+      card.append(trend);
+    }
+    if (d.sourceType === 'standalone') {
       const key = d.bridgeId + ':' + d.id;
       const panel = savedPanels.get(key) || globalThis.VoltraSettings.create(d, refresh);
       card.append(panel);
     }
     target.append(card);
+    if (d.sourceType === 'standalone') drawPowerTrend(d, card);
   }
 }
 
@@ -252,6 +279,41 @@ function liveTotals(data) {
   data.summary.outletsOn = active.filter(o => o.on === true).length;
   data.summary.powerW = active.reduce((sum, o) => sum + (o.powerW ?? 0), 0);
   data.summary.energyWh = active.reduce((sum, o) => sum + (o.energyWh ?? 0), 0);
+}
+
+function drawPowerTrend(d, card) {
+  const canvas = card.querySelector('canvas.power-canvas');
+  if (!canvas || !globalThis.VoltraLive?.samples) return;
+  const samples = globalThis.VoltraLive.samples(d.bridgeId, d.id);
+  const current = card.querySelector('.power-trend-value');
+  if (current) current.textContent = samples.length ? fmt(samples[samples.length - 1].powerW) + ' W' : 'في انتظار SSE';
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+  const pad = 6;
+  ctx.strokeStyle = '#2a3f50';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pad, h - pad); ctx.lineTo(w - pad, h - pad); ctx.stroke();
+  if (!samples.length) return;
+  const max = Math.max(10, ...samples.map(s => s.powerW));
+  const coords = samples.map((s, i) => ({
+    x: pad + (samples.length === 1 ? 0.5 : i / (samples.length - 1)) * (w - 2 * pad),
+    y: h - pad - Math.max(0, s.powerW / max) * (h - 2 * pad)
+  }));
+  ctx.beginPath(); ctx.moveTo(coords[0].x, h - pad);
+  for (const pt of coords) ctx.lineTo(pt.x, pt.y);
+  ctx.lineTo(coords[coords.length - 1].x, h - pad); ctx.closePath();
+  ctx.fillStyle = 'rgba(71, 230, 177, 0.10)'; ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(coords[0].x, coords[0].y);
+  for (const pt of coords.slice(1)) ctx.lineTo(pt.x, pt.y);
+  ctx.strokeStyle = '#47e6b1'; ctx.lineWidth = 2; ctx.stroke();
+  const last = coords[coords.length - 1];
+  ctx.beginPath(); ctx.arc(last.x, last.y, 3, 0, Math.PI * 2);
+  ctx.fillStyle = '#9af9d6'; ctx.fill();
+  canvas.setAttribute('aria-label', 'اتجاه القدرة: آخر ' + samples.length +
+    ' قراءة، أحدث قراءة ' + fmt(samples[samples.length - 1].powerW) + ' وات');
 }
 function patchLiveCard(d) {
   const card = [...$('device-list').querySelectorAll('article.device')].find(node =>
@@ -295,6 +357,7 @@ function patchLiveCard(d) {
     const state = tile.querySelector('.outlet-state');
     if (state) state.textContent = o.on === true ? 'ON' : o.on === false ? 'OFF' : '—';
   }
+  drawPowerTrend(d, card);
 }
 function patchSourceIndicator(x) {
   if (!view.data) return;
