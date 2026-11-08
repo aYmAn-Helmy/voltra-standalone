@@ -1,0 +1,15 @@
+services:
+  voltra:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8090
+      VOLTRA_USER: ${VOLTRA_USER:-admin}
+      VOLTRA_PASSWORD: ${VOLTRA_PASSWORD:?Set VOLTRA_PASSWORD in .env}
+    volumes:
+      - voltra-data:/app/data
+volumes:
+  voltra-data:
