@@ -3,6 +3,8 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { timingSafeEqual } from 'node:crypto';
 import { ApiError } from './manager.mjs';
+import { StandaloneService } from './standalone-service.mjs';
+import { FWR_CAP } from './standalone-firmware.mjs';
 
 function secureEqual(a, b) {
   const x = Buffer.from(a); const y = Buffer.from(b);
@@ -39,6 +41,21 @@ function send(res, code, content, type = 'application/json; charset=utf-8') {
   });
   res.end(data);
 }
+
+async function readFwr(req) {
+  if (req.headers['content-type'] !== 'application/x-mttl-fwr') {
+    throw new ApiError('Expected .fwr image content type', 415);
+  }
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size > FWR_CAP) throw new ApiError('FWR exceeds firmware slot capacity', 413);
+    chunks.push(chunk);
+  }
+  if (size < 44) throw new ApiError('FWR is too small', 400);
+  return Buffer.concat(chunks);
+}
 function id(value, max = 64) {
   if (value.length > max || !/^[a-zA-Z0-9_-]+$/.test(value)) throw new ApiError('Invalid identifier');
   return value;
@@ -50,6 +67,7 @@ function checkOrigin(req) {
   if (host !== req.headers.host) throw new ApiError('Cross-origin request denied', 403);
 }
 export function createHttpServer({ manager, user = 'admin', password = '', publicDir }) {
+  const standalone = new StandaloneService(manager);
   return createServer(async (req, res) => {
     try {
       if (!authorized(req, user, password)) {
@@ -89,6 +107,35 @@ export function createHttpServer({ manager, user = 'admin', password = '', publi
       if (method === 'POST' && m) return send(res, 200, await manager.refreshDevice(id(m[1]), id(m[2], 40)));
       m = path.match(/^\/api\/bridges\/([^/]+)\/devices\/([^/]+)$/);
       if (method === 'DELETE' && m) return send(res, 200, await manager.removeDevice(id(m[1]), id(m[2], 40)));
+
+      // Explicit Standalone firmware endpoints scoped to the registered device.
+      m = path.match(/^\/api\/bridges\/([^/]+)\/devices\/([^/]+)\/standalone\/settings$/);
+      if (m && method === 'GET') return send(res, 200,
+        await standalone.info(id(m[1]), id(m[2], 40)));
+      if (m && method === 'POST') return send(res, 200,
+        await standalone.update(id(m[1]), id(m[2], 40), await readJson(req)));
+
+      m = path.match(/^\/api\/bridges\/([^/]+)\/devices\/([^/]+)\/standalone\/wifi\/scan$/);
+      if (m && method === 'POST') {
+        await readJson(req);
+        return send(res, 200, await standalone.scan(id(m[1]), id(m[2], 40)));
+      }
+      m = path.match(/^\/api\/bridges\/([^/]+)\/devices\/([^/]+)\/standalone\/wifi\/connect$/);
+      if (m && method === 'POST') return send(res, 200,
+        await standalone.wifi(id(m[1]), id(m[2], 40), await readJson(req)));
+
+      m = path.match(/^\/api\/bridges\/([^/]+)\/devices\/([^/]+)\/standalone\/firmware\/upload$/);
+      if (m && method === 'POST') {
+        if (req.headers['x-voltra-confirm'] !== 'FLASH') {
+          throw new ApiError('Firmware upload requires explicit FLASH confirmation', 400);
+        }
+        const hash = req.headers['x-voltra-fwr-sha256'];
+        if (typeof hash !== 'string' || !/^[a-f0-9]{64}$/i.test(hash)) {
+          throw new ApiError('Valid FWR SHA-256 checksum required', 400);
+        }
+        return send(res, 200, await standalone.firmwareUpload(id(m[1]), id(m[2], 40),
+          await readFwr(req), hash));
+      }
       const staticFiles = {
         '/': ['index.html', 'text/html; charset=utf-8'],
         '/app.js': ['app.js', 'text/javascript; charset=utf-8'],
