@@ -222,6 +222,11 @@ export class BridgeManager {
     if (!device?.reachable || !device?.controlAvailable) {
       throw new ApiError('Standalone device hardware is not ready for switching', 409);
     }
+    const liveIdentity = await this.request(bridgeId, '/api/status');
+    if (!isStandaloneStatus(liveIdentity) ||
+        liveIdentity.mac.replaceAll(':', '').toUpperCase() !== deviceId.toUpperCase()) {
+      throw new ApiError('Device IP now belongs to another device. Update the source before controlling power.', 409);
+    }
     const bridge = this.get(bridgeId);
     let response;
     try {

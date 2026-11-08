@@ -15,6 +15,13 @@ export class StandaloneService {
   async checked(bridgeId, deviceId) {
     const source = await this.manager.sourceForDevice(bridgeId, deviceId);
     if (source.type !== 'standalone') throw new ApiError('This feature requires Standalone firmware', 400);
+    // DHCP may reassign a saved IP. Verify physical identity immediately before
+    // any settings, Wi-Fi or firmware operation so we never modify the wrong strip.
+    const liveStatus = await this.manager.request(bridgeId, '/api/status');
+    if (typeof liveStatus?.mac !== 'string' ||
+        liveStatus.mac.replaceAll(':', '').toUpperCase() !== deviceId.toUpperCase()) {
+      throw new ApiError('This IP does not match the saved strip MAC. Recheck the device network.', 409);
+    }
     return this.manager.get(bridgeId);
   }
 
