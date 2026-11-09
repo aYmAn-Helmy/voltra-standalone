@@ -74,6 +74,7 @@
   const setTheme = value => {
     preferences.theme = value;
     document.documentElement.dataset.theme = value;
+    window.VoltraAndroid?.setTheme?.(value);
     const themeButton = byId('vp-theme-button');
     if (themeButton) themeButton.textContent = value === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن';
     prefsSave();

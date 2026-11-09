@@ -47,6 +47,19 @@ public final class MainActivity extends Activity {
         settings.setDefaultTextEncodingName("UTF-8");
         gateway = new NativeGateway(this, this::sendBrowserEvent);
         web.addJavascriptInterface(new Object() {
+            @JavascriptInterface public void setTheme(String theme) {
+                if (!"light".equals(theme) && !"dark".equals(theme)) return;
+                runOnUiThread(() -> {
+                    boolean light = "light".equals(theme);
+                    getWindow().setStatusBarColor(light ? Color.rgb(244, 247, 252) :
+                        Color.rgb(7, 13, 25));
+                    getWindow().setNavigationBarColor(light ? Color.rgb(255, 255, 255) :
+                        Color.rgb(13, 24, 42));
+                    int flags = light ? View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR |
+                        View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR : 0;
+                    getWindow().getDecorView().setSystemUiVisibility(flags);
+                });
+            }
             @JavascriptInterface public void run(String requestId, String operation, String json) {
                 jobs.submit(() -> {
                     String output;

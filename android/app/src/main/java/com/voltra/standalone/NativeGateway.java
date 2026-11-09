@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -175,13 +176,24 @@ final class NativeGateway {
         if (!privateAddress(prefix + "1")) throw new Exception("Only private local Wi-Fi subnets are scanned");
         int ownHost = ip[3] & 255;
         final List<Callable<JSONObject>> tasks = new ArrayList<>();
+        final AtomicInteger progress = new AtomicInteger();
         for (int i = 1; i <= 254; i++) {
             if (i == ownHost) continue;
             final String origin = "http://" + prefix + i;
             tasks.add(() -> {
-                JSONObject device = probe(origin);
-                if (device != null) device.put("url", origin);
-                return device;
+                try {
+                    JSONObject device = probe(origin);
+                    if (device != null) device.put("url", origin);
+                    return device;
+                } finally {
+                    int done = progress.incrementAndGet();
+                    if (done % 16 == 0 || done == 253) {
+                        try {
+                            emit("scan-progress", new JSONObject()
+                                .put("scanned", done).put("total", 253));
+                        } catch (JSONException ignored) {}
+                    }
+                }
             });
         }
         List<Future<JSONObject>> results = scanner.invokeAll(tasks, 16, TimeUnit.SECONDS);
