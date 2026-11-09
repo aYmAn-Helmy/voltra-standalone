@@ -1,0 +1,484 @@
+/*
+ * VOLTRA PRO • Android-first visual system.
+ * Uses no remote fonts, icon libraries, trackers, or network resources.
+ */
+html.voltra-pro {
+  --bg: #070d19;
+  --panel: #111c2d;
+  --tile: #101c2e;
+  --line: #233249;
+  --text: #f2f7ff;
+  --muted: #a0b1c7;
+  --mint: #4ce4b0;
+  --blue: #86a9ff;
+  --red: #ff748c;
+  --vp-ink: #e8f1ff;
+  --vp-panel: #121e30;
+  --vp-panel2: #142237;
+  --vp-edge: #293951;
+  --vp-muted: #a3b4c9;
+  --vp-shadow: 0 18px 42px rgba(0, 0, 0, .18);
+  --vp-grad: linear-gradient(135deg, #2a65fa 0%, #554bed 49%, #16a8a4 100%);
+  color-scheme: dark;
+  -webkit-tap-highlight-color: transparent;
+  scroll-behavior: smooth;
+}
+html.voltra-pro body {
+  background: radial-gradient(ellipse at 8% -10%, rgba(40, 79, 189, .22), transparent 53%),
+    radial-gradient(ellipse at 85% 28%, rgba(24, 164, 168, .07), transparent 43%), var(--bg);
+  color: var(--text);
+  font-family: system-ui, "Noto Sans Arabic", Tahoma, sans-serif;
+  font-size: 14px;
+  line-height: 1.7;
+}
+html.voltra-pro .shell { max-width: 890px; padding: 20px 16px 118px; }
+html.voltra-pro .panel {
+  background: var(--vp-panel);
+  border: 1px solid var(--vp-edge);
+  border-radius: 24px;
+  box-shadow: var(--vp-shadow);
+}
+html.voltra-pro .vp-icon { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+html.voltra-pro button, html.voltra-pro a { touch-action: manipulation; }
+html.voltra-pro :is(button, input, select, a, summary):focus-visible {
+  outline: 2px solid #83f4d2;
+  outline-offset: 3px;
+}
+html.voltra-pro button:active:not(:disabled) { transform: scale(.975); }
+html.voltra-pro .btn { transition: background .18s, transform .15s, border-color .18s; border-radius: 12px; }
+html.voltra-pro .btn.primary {
+  background: linear-gradient(135deg, #396cf0 0%, #534df0 100%);
+  border-color: #6e76ff;
+  box-shadow: 0 6px 16px rgba(65, 88, 241, .18);
+}
+html.voltra-pro .btn.primary:hover { background: linear-gradient(135deg, #497bff, #6459f5); }
+html.voltra-pro .btn.secondary { background: rgba(45, 64, 90, .5); }
+html.voltra-pro .btn.danger { border-color: rgba(246, 102, 129, .32); color: #ffc5d3; }
+html.voltra-pro .topbar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  padding: 2px 0 17px; margin-bottom: 8px; gap: 12px;
+}
+html.voltra-pro .brand { gap: 11px; min-width: 0; }
+html.voltra-pro .mark {
+  background: var(--vp-grad); border: none; border-radius: 16px;
+  width: 48px; height: 48px; color: white;
+  box-shadow: 0 5px 19px rgba(64, 97, 234, .28);
+}
+html.voltra-pro .brand h1 {
+  color: var(--text); font-size: 19px; letter-spacing: .10em; text-align: right; direction: ltr;
+}
+html.voltra-pro .brand h1 span { display: block; color: var(--vp-muted); font-size: 9px; letter-spacing: .21em; }
+html.voltra-pro .brand p { font-size: 10px; color: var(--vp-muted); margin: 0; }
+html.voltra-pro .top-actions {
+  gap: 7px; flex-wrap: wrap; justify-content: flex-end; width: auto;
+}
+html.voltra-pro .health {
+  border: 1px solid var(--vp-edge); padding: 8px 11px; border-radius: 99px;
+  background: var(--vp-panel); font-size: 11px; gap: 7px;
+}
+html.voltra-pro .health.vp-healthy { border-color: rgba(51, 197, 145, .33); color: var(--mint); }
+html.voltra-pro .top-actions > .btn { width: auto; min-height: 36px; padding: 7px 11px; font-size: 11px; flex: none; }
+html.voltra-pro #refresh-all { background: var(--vp-panel2); }
+html.voltra-pro #mobile-scan { display: none; }
+
+/* First-launch hero / clear hierarchy */
+html.voltra-pro .vp-hero {
+  position: relative; isolation: isolate; overflow: hidden;
+  padding: 24px 23px 20px; border: 1px solid rgba(140, 162, 255, .26);
+  border-radius: 26px;
+  background: linear-gradient(120deg, #192e63 0%, #242b72 42%, #163b65 100%);
+  box-shadow: 0 17px 45px rgba(12, 26, 68, .36);
+  margin-bottom: 18px; min-height: 245px;
+}
+html.voltra-pro .vp-hero::before, html.voltra-pro .vp-hero::after {
+  content: ""; position: absolute; z-index: -1; border-radius: 50%; pointer-events: none;
+}
+html.voltra-pro .vp-hero::before {
+  width: 260px; height: 260px; background: #4878ff;
+  filter: blur(100px); opacity: .2; left: -80px; top: -90px;
+}
+html.voltra-pro .vp-hero::after {
+  width: 190px; height: 190px; background: #35f4b6;
+  filter: blur(90px); opacity: .18; right: -60px; bottom: -80px;
+}
+html.voltra-pro .vp-eyebrow, html.voltra-pro .vp-kicker {
+  font-size: 10px; font-weight: 800; letter-spacing: .18em; color: #87e0d5;
+  direction: ltr; text-align: right;
+}
+html.voltra-pro .vp-hero-copy { max-width: 76%; position: relative; z-index: 1; }
+html.voltra-pro .vp-hero-title {
+  color: #fff; font-size: clamp(22px, 4vw, 31px); line-height: 1.35;
+  margin: 12px 0 8px; letter-spacing: -.02em; font-weight: 800;
+}
+html.voltra-pro .vp-hero-desc { font-size: 12px; color: #bfceec; margin: 0 0 15px; max-width: 390px; }
+html.voltra-pro .vp-hero-chip {
+  width: fit-content; display: inline-flex; align-items: center; gap: 6px;
+  font-size: 10px; font-weight: 700; padding: 5px 10px; border-radius: 99px;
+  background: rgba(40, 193, 151, .12); border: 1px solid rgba(85, 232, 194, .23);
+  color: #a9f6e0;
+}
+html.voltra-pro .vp-hero-visual {
+  position: absolute; left: 8%; top: 20%; width: 160px; height: 160px;
+  display: grid; place-items: center; opacity: .94; z-index: 0;
+}
+html.voltra-pro .vp-orbit {
+  position: absolute; border: 1px solid rgba(168, 207, 255, .24);
+  border-radius: 50%; inset: 0;
+}
+html.voltra-pro .vp-orbit-one { inset: 13px; border-style: dashed; }
+html.voltra-pro .vp-orbit-two { inset: -16px; border-color: rgba(111, 170, 245, .14); }
+html.voltra-pro .vp-power-glyph {
+  width: 100px; height: 100px; display: grid; place-items: center;
+  background: linear-gradient(135deg, rgba(64, 145, 255, .25), rgba(43, 223, 172, .17));
+  border: 1px solid rgba(147, 236, 222, .36); border-radius: 31px;
+  color: #aefbea; transform: rotate(-8deg); box-shadow: 0 0 50px rgba(70, 208, 180, .16);
+}
+html.voltra-pro .vp-power-glyph svg { transform: rotate(8deg); }
+html.voltra-pro .vp-hero-actions { display: flex; gap: 9px; flex-wrap: wrap; position: relative; z-index: 1; margin-top: 12px; }
+html.voltra-pro .vp-action {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 45px; border-radius: 14px; color: var(--text); font-size: 12px;
+  font-weight: 750; border: 1px solid var(--vp-edge); padding: 10px 15px;
+  background: var(--vp-panel2); transition: transform .16s, border-color .16s, background .16s;
+}
+html.voltra-pro .vp-action.vp-primary {
+  background: linear-gradient(115deg, #3773f4, #5b55ed); border-color: rgba(179, 188, 255, .28);
+  color: white; box-shadow: 0 5px 12px #101d6366;
+}
+html.voltra-pro .vp-action.vp-glass {
+  background: rgba(255, 255, 255, .08); border-color: rgba(255, 255, 255, .2);
+}
+html.voltra-pro .vp-action:disabled { opacity: .55; cursor: not-allowed; }
+html.voltra-pro .vp-action.selected { background: rgba(79, 219, 166, .14); color: #7ce6c0; border-color: #3e9277; }
+html.voltra-pro .vp-welcome {
+  text-align: center; border: 1px dashed #437b88;
+  border-radius: 24px; padding: 25px 16px; background: #112535;
+  margin: 8px 0 18px; color: #bce5ea;
+}
+html.voltra-pro .vp-welcome[hidden] { display: none; }
+html.voltra-pro .vp-welcome > .vp-icon { color: #70f1cb; }
+html.voltra-pro .vp-welcome h3 { margin: 5px 0; color: white; font-size: 19px; }
+html.voltra-pro .vp-welcome p { font-size: 12px; max-width: 400px; margin: 4px auto 14px; color: #abc5d3; }
+html.voltra-pro .vp-welcome-actions { display: flex; justify-content: center; gap: 9px; flex-wrap: wrap; }
+
+/* Dashboard metrics */
+html.voltra-pro .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 11px; margin-bottom: 22px; }
+html.voltra-pro .stat {
+  border-radius: 19px; padding: 15px 15px 13px;
+  background: linear-gradient(155deg, var(--vp-panel2), var(--vp-panel));
+  box-shadow: none; min-height: 118px;
+}
+html.voltra-pro .stat:first-child {
+  background: linear-gradient(145deg, rgba(58, 91, 214, .38), rgba(27, 41, 88, .72));
+  border-color: rgba(101, 132, 255, .42);
+}
+html.voltra-pro .stat p { color: var(--vp-muted); margin-bottom: 4px; font-size: 12px; }
+html.voltra-pro .stat strong { font-size: clamp(19px, 4vw, 27px); font-weight: 800; line-height: 1.4; color: var(--text); }
+html.voltra-pro .stat small { font-size: 10px; color: var(--vp-muted); }
+
+/* Core content */
+html.voltra-pro .vp-layout { display: flex; flex-direction: column; gap: 16px; align-items: stretch; }
+html.voltra-pro .main-panel {
+  min-height: 400px; padding: 21px; box-shadow: none;
+  background: var(--vp-panel); border-radius: 24px;
+}
+html.voltra-pro .sidebar { display: flex; flex-direction: column; gap: 16px; }
+html.voltra-pro .side-panel { padding: 21px; }
+html.voltra-pro .side-panel h2 { font-size: 20px; margin-bottom: 12px; }
+html.voltra-pro .side-panel .eyebrow { display: none; }
+html.voltra-pro .side-panel input { min-height: 47px; font-size: 14px; background: var(--vp-panel2); }
+html.voltra-pro .side-panel .tip { font-size: 11px; opacity: .9; }
+html.voltra-pro .vp-section-title { margin-bottom: 19px; }
+html.voltra-pro .vp-section-title h2 { font-size: 22px; margin: 6px 0; letter-spacing: -.03em; }
+html.voltra-pro .vp-section-title p { color: var(--vp-muted); font-size: 12px; margin: 0; }
+html.voltra-pro .devices-head {
+  align-items: flex-start; gap: 12px; border-bottom: 1px solid var(--vp-edge);
+  margin: 0 0 12px; padding-bottom: 17px;
+}
+html.voltra-pro .devices-head > div:first-child { display: none; }
+html.voltra-pro .filters { width: 100%; }
+html.voltra-pro .filters input { flex: 1 1 180px; min-width: 0; min-height: 45px; border-radius: 13px; }
+html.voltra-pro .filters select { flex: 1; min-width: 0; min-height: 45px; border-radius: 13px; }
+html.voltra-pro .filters input, html.voltra-pro .filters select {
+  border: 1px solid var(--vp-edge); background: var(--vp-panel2);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, .09); color: var(--text);
+}
+html.voltra-pro .filters .vp-favorites-toggle { flex: 0 0 auto; min-height: 45px; }
+html.voltra-pro .legend {
+  font-size: 11px; gap: 10px; align-items: center;
+  border-bottom: 0; padding: 0; margin: 0 0 16px; color: var(--vp-muted);
+}
+html.voltra-pro .legend #stream-summary { margin-inline-start: auto; }
+html.voltra-pro .vp-sync-line { font-size: 10px; color: #8db8bd; }
+html.voltra-pro .device-list { gap: 16px; }
+html.voltra-pro .device {
+  background: linear-gradient(165deg, var(--vp-panel2), var(--vp-panel));
+  border: 1px solid var(--vp-edge); border-radius: 23px;
+  padding: 17px; overflow: hidden;
+  box-shadow: 0 10px 29px rgba(0, 0, 0, .1);
+}
+html.voltra-pro .device-live { border-color: rgba(57, 163, 138, .48); }
+html.voltra-pro .device-head { gap: 10px; padding-bottom: 7px; margin-bottom: 15px; }
+html.voltra-pro .device-head > div:first-child { min-width: 0; max-width: 100%; position: relative; padding-inline-start: 42px; }
+html.voltra-pro .device-title { font-size: 17px; font-weight: 800; letter-spacing: -.025em; }
+html.voltra-pro .device-sub { font-size: 10px; color: var(--vp-muted); }
+html.voltra-pro .device-live-telemetry {
+  font-size: 12px; background: rgba(39, 160, 132, .09); color: #9be8d0;
+  border-radius: 9px; padding: 5px 10px; margin-top: 9px;
+}
+html.voltra-pro .vp-favorite {
+  position: absolute; right: 0; top: 0;
+  width: 34px; height: 34px; display: grid; place-items: center;
+  color: #91a3c0; border: 1px solid var(--vp-edge);
+  background: rgba(47, 70, 100, .55); border-radius: 12px;
+}
+html.voltra-pro .vp-favorite.selected { color: #ffc957; border-color: #8f7144; background: #463827; }
+html.voltra-pro .vp-favorite.selected svg { fill: #ffc957; }
+html.voltra-pro .vp-favorites-empty { padding: 25px 16px; border: 1px dashed var(--vp-edge); border-radius: 16px; text-align: center; color: var(--vp-muted); }
+html.voltra-pro .device-actions { gap: 7px; }
+html.voltra-pro .device-actions .btn {
+  padding: 6px 10px; font-size: 11px; border-radius: 9px; min-height: 37px;
+}
+html.voltra-pro .device-live-label { font-size: 10px; min-height: 30px; }
+html.voltra-pro .outlets { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+html.voltra-pro .outlet {
+  border: 1px solid var(--vp-edge); background: rgba(9, 22, 39, .53);
+  border-radius: 17px; padding: 13px; min-height: 160px;
+}
+html.voltra-pro .outlet-on {
+  background: linear-gradient(135deg, rgba(13, 82, 72, .32), rgba(18, 37, 54, .77));
+  border-color: rgba(48, 179, 141, .58);
+}
+html.voltra-pro .outlet-head { margin-bottom: 10px; font-size: 12px; min-height: 25px; gap: 4px; }
+html.voltra-pro .outlet-head span { overflow-wrap: anywhere; }
+html.voltra-pro .switch { width: 47px; height: 28px; border-radius: 100px; flex: 0 0 47px; }
+html.voltra-pro .switch:after { top: 4px; right: 4px; width: 20px; height: 20px; }
+html.voltra-pro .switch.on { background: linear-gradient(115deg, #46dca4, #25b692); }
+html.voltra-pro .switch.on:after { right: 23px; }
+html.voltra-pro .switch:disabled { opacity: .38; }
+html.voltra-pro .measure { font-size: 24px; color: var(--text); }
+html.voltra-pro .outlet-on .measure { color: #9ef7cd; }
+html.voltra-pro .submeasure { color: var(--vp-muted); font-size: 10px; }
+html.voltra-pro .outlet-lock { font-size: 10px; margin-bottom: 0; }
+html.voltra-pro .outlet-state { position: static; float: left; border-radius: 7px; margin-top: 5px; font-size: 9px; }
+html.voltra-pro .power-trend {
+  border-radius: 16px; border: 1px solid rgba(88, 159, 136, .25);
+  background: linear-gradient(145deg, rgba(20, 72, 65, .17), rgba(16, 34, 55, .5));
+  margin-top: 14px;
+}
+html.voltra-pro .device-advanced {
+  background: rgba(13, 28, 49, .6); border-radius: 15px;
+  border-color: var(--vp-edge); margin-top: 16px;
+}
+html.voltra-pro .device-advanced > summary {
+  padding: 14px; background: none; color: #a9bbff;
+  display: flex; align-items: center; gap: 7px; font-size: 12px;
+}
+html.voltra-pro .vp-advanced-icon { color: #75cdec; }
+html.voltra-pro .device-advanced[open] { border-color: rgba(125, 145, 243, .5); }
+html.voltra-pro .advanced-body { padding: 14px; }
+html.voltra-pro .advanced-toolbar {
+  display: flex; flex-flow: row nowrap; overflow-x: auto; overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity; padding: 3px 1px 9px; gap: 7px;
+  scrollbar-width: thin; margin-bottom: 9px;
+}
+html.voltra-pro .advanced-toolbar .btn {
+  flex: 0 0 auto; min-width: unset; border-radius: 99px; min-height: 38px;
+  padding: 7px 14px; font-size: 11px; scroll-snap-align: start;
+}
+html.voltra-pro .advanced-form { max-width: none; }
+html.voltra-pro .advanced-form input:not([type=checkbox]),
+html.voltra-pro .advanced-form select { min-height: 47px; border-radius: 12px; background: var(--vp-panel2); color: var(--text); }
+html.voltra-pro .advanced-form > .btn.primary { min-height: 47px; min-width: 140px; width: 100%; }
+html.voltra-pro .advanced-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+html.voltra-pro .advanced-data { border-radius: 12px; background: var(--vp-panel2); }
+html.voltra-pro .schedule-card { background: rgba(44, 65, 98, .15); border-radius: 13px; }
+html.voltra-pro .advanced-note.warning { color: #ffc69a; }
+html.voltra-pro .advanced-stream-state { margin-inline-start: auto; float: none; }
+
+/* Network tab */
+html.voltra-pro .vp-network-intro {
+  padding: 22px; margin-bottom: 5px; border-radius: 22px;
+  background: linear-gradient(145deg, #19375a, #18294a); border: 1px solid rgba(93, 149, 202, .36);
+}
+html.voltra-pro .vp-network-intro h2 { font-size: 23px; margin: 5px 0 3px; }
+html.voltra-pro .vp-network-intro > p { font-size: 12px; max-width: 500px; color: #bacbdd; margin: 0 0 20px; }
+html.voltra-pro .vp-scan-banner {
+  display: flex; align-items: center; gap: 13px;
+  border-radius: 15px; background: rgba(12, 26, 45, .6);
+  border: 1px solid rgba(84, 168, 181, .35); padding: 12px;
+}
+html.voltra-pro .vp-scan-banner > .vp-icon { color: #72e9d4; }
+html.voltra-pro .vp-scan-info { min-width: 0; flex: 1 1 120px; }
+html.voltra-pro .vp-scan-info strong { color: #ecf6ff; display: block; font-size: 13px; }
+html.voltra-pro .vp-scan-info p { color: #9cbac9; font-size: 11px; margin: 0; overflow-wrap: anywhere; }
+html.voltra-pro .vp-scan-banner .vp-action { min-height: 42px; padding: 8px 12px; flex: 0 0 auto; font-size: 11px; }
+html.voltra-pro .vp-scan-banner .vp-action.is-working .vp-icon { animation: vp-spin 1.2s linear infinite; }
+html.voltra-pro .sidebar .bridge {
+  border-radius: 15px; background: var(--vp-panel2); border-color: var(--vp-edge);
+  padding: 16px;
+}
+html.voltra-pro .mobile-scan-status { display: none; }
+
+/* App preferences */
+html.voltra-pro .vp-settings-page {
+  background: var(--vp-panel); border: 1px solid var(--vp-edge);
+  border-radius: 24px; padding: 22px; min-height: 350px;
+}
+html.voltra-pro .vp-settings-page h2 { font-size: 24px; margin: 7px 0; }
+html.voltra-pro .vp-settings-lead { color: var(--vp-muted); font-size: 12px; margin: 0 0 23px; }
+html.voltra-pro .vp-settings-panel, html.voltra-pro .vp-about {
+  background: var(--vp-panel2); border: 1px solid var(--vp-edge);
+  border-radius: 18px; padding: 4px 17px;
+}
+html.voltra-pro .vp-pref-row {
+  display: flex; align-items: center; justify-content: space-between; min-height: 66px; gap: 14px;
+}
+html.voltra-pro .vp-pref-row + .vp-pref-row { border-top: 1px solid var(--vp-edge); }
+html.voltra-pro .vp-pref-name { display: flex; align-items: center; gap: 12px; font-weight: 730; }
+html.voltra-pro .vp-pref-name .vp-icon { color: #9cacff; }
+html.voltra-pro .vp-setting-button {
+  color: var(--text); background: rgba(64, 85, 117, .4); border: 1px solid var(--vp-edge);
+  border-radius: 11px; min-height: 39px; padding: 8px 12px; font-size: 11px;
+}
+html.voltra-pro .vp-preference-checkbox { height: 22px; width: 42px; accent-color: #4ce4b0; }
+html.voltra-pro .vp-setting-note { font-size: 11px; color: var(--vp-muted); padding-bottom: 13px; line-height: 1.8; }
+html.voltra-pro .vp-about { padding: 19px; margin-top: 19px; }
+html.voltra-pro .vp-about > .vp-icon { color: #5fe7be; }
+html.voltra-pro .vp-about strong { margin-inline-start: 9px; font-size: 14px; }
+html.voltra-pro .vp-about p { font-size: 12px; color: var(--vp-muted); margin: 9px 0; }
+html.voltra-pro .vp-about-link { color: #a1b7ff; font-size: 12px; }
+
+/* Navigation on every Android screen */
+html.voltra-pro .vp-bottom-nav {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: 0; width: min(100%, 890px); z-index: 40; direction: rtl;
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px;
+  background: rgba(13, 24, 42, .97); border-top: 1px solid rgba(102, 136, 189, .29);
+  box-shadow: 0 -12px 36px rgba(0, 0, 0, .28);
+  padding: 9px 14px calc(9px + env(safe-area-inset-bottom, 0px));
+  backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+}
+html.voltra-pro .vp-nav-button {
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 4px; padding: 8px 2px 5px; min-height: 54px;
+  border-radius: 14px; border: 0; background: transparent;
+  color: #90a4c2; font-size: 10px; font-weight: 650; position: relative;
+}
+html.voltra-pro .vp-nav-button.active { color: #91b8ff; background: rgba(79, 103, 217, .17); }
+html.voltra-pro .vp-nav-button.active::before {
+  content: ""; position: absolute; width: 23px; height: 3px; border-radius: 99px;
+  background: linear-gradient(90deg, #5980ff, #63dfb3); top: -7px;
+}
+html.voltra-pro .vp-nav-button.is-working .vp-icon { animation: vp-pulse 1.4s ease-in-out infinite; }
+html.voltra-pro footer { display: none; }
+html.voltra-pro .toast { bottom: calc(98px + env(safe-area-inset-bottom, 0px)); left: 12px; right: 12px; width: auto; max-width: 650px; margin: auto; border-radius: 14px; }
+html.voltra-pro dialog { border-radius: 24px; }
+html.voltra-pro .empty { padding: 28px 14px; border-radius: 18px; background: var(--vp-panel2); }
+
+/* Actual screens: the home and devices pages share the same live cards. */
+html.voltra-pro[data-page=home] .sidebar,
+html.voltra-pro[data-page=home] .vp-network-intro,
+html.voltra-pro[data-page=home] .vp-settings-page { display: none; }
+html.voltra-pro[data-page=devices] .sidebar,
+html.voltra-pro[data-page=devices] .vp-network-intro,
+html.voltra-pro[data-page=devices] .vp-settings-page,
+html.voltra-pro[data-page=devices] .stats,
+html.voltra-pro[data-page=devices] .vp-hero,
+html.voltra-pro[data-page=devices] .vp-welcome { display: none; }
+html.voltra-pro[data-page=network] .vp-hero,
+html.voltra-pro[data-page=network] .vp-welcome,
+html.voltra-pro[data-page=network] .stats,
+html.voltra-pro[data-page=network] .main-panel,
+html.voltra-pro[data-page=network] .vp-settings-page { display: none; }
+html.voltra-pro[data-page=settings] .vp-hero,
+html.voltra-pro[data-page=settings] .vp-welcome,
+html.voltra-pro[data-page=settings] .stats,
+html.voltra-pro[data-page=settings] .vp-layout { display: none; }
+
+/* Light appearance, functional rather than a decorative toggle. */
+html.voltra-pro[data-theme=light] {
+  --bg: #f3f6fc; --panel: #fff; --tile: #fff; --line: #dce4f2;
+  --text: #15243c; --muted: #53677f; --vp-ink: #172740;
+  --vp-panel: #fff; --vp-panel2: #f3f6fc; --vp-edge: #dde5f2;
+  --vp-muted: #60718a; --vp-shadow: 0 7px 22px rgba(35, 51, 83, .08);
+  color-scheme: light;
+}
+html.voltra-pro[data-theme=light] body { background: #f4f7fc; }
+html.voltra-pro[data-theme=light] .vp-hero, html.voltra-pro[data-theme=light] .vp-network-intro { color: #fff; }
+html.voltra-pro[data-theme=light] .device-live-telemetry { color: #126e5a; background: #eafaf4; }
+html.voltra-pro[data-theme=light] .outlet { background: #f7f9fd; }
+html.voltra-pro[data-theme=light] .outlet-on { background: #ecf9f5; border-color: #77ccb2; }
+html.voltra-pro[data-theme=light] .outlet-on .measure { color: #177b5c; }
+html.voltra-pro[data-theme=light] .outlet .outlet-state { color: #355c53; }
+html.voltra-pro[data-theme=light] .power-trend { background: #eef8f6; }
+html.voltra-pro[data-theme=light] .device-advanced { background: #f9fbff; }
+html.voltra-pro[data-theme=light] .device-advanced > summary { color: #3759ad; }
+html.voltra-pro[data-theme=light] .advanced-data,
+html.voltra-pro[data-theme=light] input,
+html.voltra-pro[data-theme=light] select { color: #172740; }
+html.voltra-pro[data-theme=light] .device-live-label { color: #45678a; }
+html.voltra-pro[data-theme=light] .device-live-label.connected { color: #126e5a; }
+html.voltra-pro[data-theme=light] .vp-bottom-nav { background: rgba(255, 255, 255, .97); border-top-color: #e0e7f1; }
+html.voltra-pro[data-theme=light] .vp-nav-button { color: #66758f; }
+html.voltra-pro[data-theme=light] .vp-nav-button.active { color: #365cdb; background: #eaf0ff; }
+html.voltra-pro[data-theme=light] .vp-favorite { background: #eef2fb; color: #7385a3; }
+html.voltra-pro[data-theme=light] .vp-favorite.selected { background: #fff5dd; color: #b17a16; }
+html.voltra-pro[data-theme=light] .vp-settings-page .vp-about, html.voltra-pro[data-theme=light] .vp-settings-panel { background: #f7f9fd; }
+html.voltra-pro[data-theme=light] .vp-setting-button { color: #1c3456; background: #eaf0f8; }
+html.voltra-pro[data-theme=light] .vp-welcome { background: #eaf9f5; color: #2e6b64; }
+html.voltra-pro[data-theme=light] .vp-welcome h3 { color: #214455; }
+html.voltra-pro[data-theme=light] .vp-welcome p { color: #587b83; }
+
+/* Mobile refinements */
+@media(max-width:600px) {
+  html.voltra-pro .shell { padding: 14px 11px 112px; }
+  html.voltra-pro .topbar { gap: 10px; margin-bottom: 5px; }
+  html.voltra-pro .top-actions { width: 100%; justify-content: space-between; }
+  html.voltra-pro .health { flex: 1; min-width: 0; justify-content: center; }
+  html.voltra-pro .vp-hero { padding: 22px 17px 20px; min-height: 234px; }
+  html.voltra-pro .vp-hero-copy { max-width: 89%; }
+  html.voltra-pro .vp-hero-title { font-size: 24px; }
+  html.voltra-pro .vp-hero-desc { max-width: 69%; }
+  html.voltra-pro .vp-hero-visual { left: -12px; top: 39px; width: 130px; height: 130px; opacity: .53; }
+  html.voltra-pro .vp-power-glyph { width: 82px; height: 82px; border-radius: 25px; }
+  html.voltra-pro .vp-power-glyph svg { width: 48px; height: 48px; }
+  html.voltra-pro .vp-hero-actions .vp-action { padding: 8px 11px; min-height: 43px; font-size: 11px; flex: 1; }
+  html.voltra-pro .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+  html.voltra-pro .stat { padding: 13px; min-height: 107px; }
+  html.voltra-pro .stat strong { font-size: 23px; }
+  html.voltra-pro .main-panel { padding: 13px; border-radius: 22px; }
+  html.voltra-pro .vp-section-title h2 { font-size: 20px; }
+  html.voltra-pro .filters { gap: 8px; }
+  html.voltra-pro .filters input { flex: 1 0 100%; }
+  html.voltra-pro .filters select { flex: 1 1 25%; width: auto; max-width: none; font-size: 11px; }
+  html.voltra-pro .filters .vp-favorites-toggle { min-height: 45px; padding: 8px; font-size: 11px; }
+  html.voltra-pro .legend { flex-wrap: wrap; gap: 8px; }
+  html.voltra-pro .legend #stream-summary { width: auto; margin-inline-start: 0; }
+  html.voltra-pro .device { padding: 13px; border-radius: 19px; }
+  html.voltra-pro .device-head > div:first-child { padding-inline-start: 40px; }
+  html.voltra-pro .device-title { font-size: 16px; }
+  html.voltra-pro .device-actions .btn { padding: 6px 9px; min-height: 35px; }
+  html.voltra-pro .outlets { gap: 8px; }
+  html.voltra-pro .outlet { padding: 11px; border-radius: 15px; min-height: 148px; }
+  html.voltra-pro .measure { font-size: 21px; }
+  html.voltra-pro .outlet-head { font-size: 11px; }
+  html.voltra-pro .vp-settings-page { padding: 18px 14px; }
+  html.voltra-pro .vp-scan-banner { flex-wrap: wrap; }
+  html.voltra-pro .vp-scan-banner .vp-action { width: 100%; }
+}
+@media(max-width:360px) {
+  html.voltra-pro .vp-hero-desc { max-width: 100%; }
+  html.voltra-pro .vp-hero-visual { opacity: .20; }
+  html.voltra-pro .brand h1 { font-size: 17px; }
+  html.voltra-pro .outlet-head { flex-wrap: wrap; }
+  html.voltra-pro .schedule-days { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media(prefers-reduced-motion:reduce) {
+  html.voltra-pro *, html.voltra-pro *::before, html.voltra-pro *::after {
+    scroll-behavior: auto !important; transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+@keyframes vp-spin { to { transform: rotate(360deg); } }
+@keyframes vp-pulse { 50% { opacity: .35; } }
