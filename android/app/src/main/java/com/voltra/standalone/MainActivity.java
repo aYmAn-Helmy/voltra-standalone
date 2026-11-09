@@ -157,6 +157,27 @@ public final class MainActivity extends Activity {
                 "}", null));
         }
     }
+    @SuppressWarnings("deprecation")
+    @Override public void onBackPressed() {
+        if (web == null) {
+            super.onBackPressed();
+            return;
+        }
+        // Respect the mobile navigation model before closing the Android app.
+        // Collapse an expanded device settings card first, then return home.
+        web.evaluateJavascript(
+            "(function(){" +
+                "var detail=document.querySelector('details.device-advanced[open]');" +
+                "if(detail){detail.open=false;return 'handled';}" +
+                "if(window.VoltraPro && window.VoltraPro.page!=='home'){" +
+                    "window.VoltraPro.showPage('home');return 'handled';}" +
+                "return 'exit';" +
+            "})()", answer -> {
+                if (!"\"handled\"".equals(answer)) MainActivity.super.onBackPressed();
+            }
+        );
+    }
+
     @Override protected void onDestroy() {
         if (gateway != null) gateway.close();
         jobs.shutdownNow();
