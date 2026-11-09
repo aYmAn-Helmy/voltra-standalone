@@ -39,7 +39,7 @@ const data = (total = 1) => ({
 });
 
 test('Voltra Pro creates accessible four-tab Android navigation and overview', async () => {
-  const { window, dom } = await makePage();
+  const { window, dom, scans } = await makePage();
   try {
     assert.equal(window.document.documentElement.classList.contains('voltra-pro'), true);
     assert.equal(window.document.documentElement.dataset.page, 'home');

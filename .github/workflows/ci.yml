@@ -27,5 +27,9 @@ jobs:
           node --check public/app.js
           node --check public/settings.js
           node --check public/live.js
+          node --check public/pro-ui.js
+          node --check public/mobile.js
+      - name: Install UI test dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
       - name: Run unit tests
         run: npm test

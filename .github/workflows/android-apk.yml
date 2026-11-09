@@ -21,13 +21,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Install UI test dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
       - name: Validate transport and professional Android UI
         run: |
           node --check public/mobile.js
           node --check public/pro-ui.js
-          node --test test/mobile.test.mjs
-          npm install --no-save --ignore-scripts jsdom@24.1.3
-          node --test test/pro-ui.test.mjs
+          node --test test/mobile.test.mjs test/pro-ui.test.mjs
       - name: Use hosted Android SDK
         run: |
           echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
