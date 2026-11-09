@@ -274,6 +274,8 @@
 
   function applyFavorites() {
     const all = [...document.querySelectorAll('#device-list article.device')];
+    const activeForm = document.activeElement?.closest?.('details.device-advanced');
+    const avoidMovingForm = !!activeForm?.open;
     const favorites = new Set(preferences.favorites);
     const cards = all.map((card, index) => ({
       card, index, favorite: favorites.has(card.dataset.deviceKey)
@@ -281,8 +283,10 @@
     cards.sort((a, b) => Number(b.favorite) - Number(a.favorite) || a.index - b.index);
     const parent = byId('device-list');
     for (const item of cards) {
-      parent.append(item.card);
-      item.card.hidden = preferences.favoritesOnly && !item.favorite;
+      // Never detach/reappend a card while the user is editing its settings.
+      if (!avoidMovingForm) parent.append(item.card);
+      item.card.hidden = preferences.favoritesOnly && !item.favorite &&
+        !item.card.contains(document.activeElement);
       const button = item.card.querySelector('.vp-favorite');
       if (button) {
         button.classList.toggle('selected', item.favorite);
@@ -376,12 +380,25 @@
     const network = document.querySelector('.vp-nav-button[data-screen="network"]');
     if (network) network.classList.toggle('is-working', busy);
   }
+  function updateDiscoveryProgress(value) {
+    if (!scanState.busy) return;
+    if (!Number.isInteger(value.scanned) || !Number.isInteger(value.total) ||
+      value.total <= 0 || value.scanned < 0 || value.scanned > value.total) return;
+    const message = 'جاري فحص الشبكة… ' + value.scanned + ' من ' + value.total + ' عنوان';
+    const text = networkIntro.querySelector('.vp-scan-message');
+    if (text) text.textContent = message;
+  }
+  function updateMetrics(data) {
+    lastData = data;
+    updateSummary();
+  }
   function setError(message) {
     const bar = byId('vp-sync-line');
     if (bar) bar.textContent = message ? 'تعذر تحديث البيانات • جرب التحديث' : '';
   }
   window.VoltraPro = {
-    showPage, update, setScanState, setError,
+    showPage, update, updateMetrics, setScanState, updateDiscoveryProgress, setError,
+    get scanMessage() { return scanState.message; },
     get autoScanEnabled() { return preferences.autoscan; },
     get page() { return page; }
   };

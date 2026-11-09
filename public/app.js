@@ -393,6 +393,7 @@ function onLiveEvent(kind, envelope) {
   liveTotals(view.data);
   renderSummary(view.data);
   updateStreamSummary();
+  globalThis.VoltraPro?.updateMetrics(view.data);
 }
 function render(data) {
   globalThis.VoltraLive.hydrate(data);
@@ -407,6 +408,8 @@ function render(data) {
   renderBridges(data);
   renderDevices(data);
   updateStreamSummary();
+  globalThis.VoltraPro?.update(data);
+  globalThis.VoltraPro?.setError('');
 }
 async function refresh() {
   if (view.loading) return;
@@ -418,7 +421,8 @@ async function refresh() {
   }
   catch (e) {
     $('health-dot').classList.remove('ok');
-    $('health').textContent = 'فشل الاتصال بـVoltra';
+    $('health').textContent = 'تعذر تحديث الأجهزة';
+    globalThis.VoltraPro?.setError(e.message);
     notify(e.message, true);
   } finally { view.loading = false; }
 }
@@ -431,7 +435,7 @@ $('bridge-form').addEventListener('submit', async event => {
       body: JSON.stringify({ name: $('bridge-name').value, url: $('bridge-url').value })
     });
     $('bridge-form').reset();
-    notify('تم حفظ المصدر. تأكد أن Bridge الأصلية شغالة.');
+    notify('تم إضافة المصدر. اتأكد إنه متصل بنفس شبكة Wi-Fi.');
     await refresh();
   } catch (e) { notify(e.message, true); } finally { submit.disabled = false; }
 });

@@ -524,6 +524,10 @@
   window.__voltraNativeEvent = (kind, payload) => {
     try {
       const parsed = JSON.parse(payload);
+      if (kind === 'scan-progress') {
+        window.VoltraPro?.updateDiscoveryProgress?.(parsed);
+        return;
+      }
       for (const source of sources) source.emit(kind, parsed);
     } catch {}
   };
@@ -532,21 +536,26 @@
   async function scanNow(silent = false) {
     if (scanning) return;
     scanning = true;
+    window.VoltraPro?.setScanState(true, 'جاري البحث عن مشتركاتك على شبكة Wi-Fi…');
     const button = document.getElementById('mobile-scan');
     if (button) { button.disabled = true; button.textContent = '◌ جاري البحث...'; }
     const status = document.getElementById('mobile-scan-status');
     if (status) status.textContent = 'بنبحث على شبكة Wi-Fi الحالية...';
     try {
       const result = await native('discover');
-      if (status) status.textContent = 'آخر فحص: ' + result.subnet +
-        ' • ' + result.discovered + ' مشترك تم التعرف عليه';
+      const resultMessage = 'تم اكتشاف ' + result.discovered + ' مشترك • الشبكة ' + result.subnet;
+      if (status) status.textContent = resultMessage;
+      window.VoltraPro?.setScanState(false, resultMessage);
       if (!silent && window.notify) window.notify('تم العثور على ' + result.discovered + ' مشترك على الشبكة');
       if (window.refresh) await window.refresh();
     } catch (e) {
       if (status) status.textContent = 'تعذر الاكتشاف: ' + e.message;
+      window.VoltraPro?.setScanState(false, 'تعذر الفحص: ' + e.message);
       if (!silent && window.notify) window.notify(e.message, true);
     } finally {
       scanning = false;
+      window.VoltraPro?.setScanState(false, window.VoltraPro?.scanMessage ||
+        'انتهى فحص شبكة Wi-Fi');
       if (button) { button.disabled = false; button.textContent = '⌁ فحص Wi-Fi'; }
     }
   }
@@ -567,10 +576,14 @@
       message.textContent = 'الاكتشاف التلقائي من شبكة Wi-Fi، بدون سيرفر';
       aside.prepend(message);
     }
-    setTimeout(() => scanNow(true), 900);
-    // Automatic discovery while the app is open; avoid background LAN scans.
+    setTimeout(() => {
+      if (window.VoltraPro?.autoScanEnabled !== false) scanNow(true);
+    }, 900);
+    // Foreground-only optional discovery; a switch in the app preferences
+    // disables both first-launch and recurring automatic scanning.
     setInterval(() => {
-      if (!document.hidden && !scanning) scanNow(true);
+      if (!document.hidden && !scanning &&
+        window.VoltraPro?.autoScanEnabled !== false) scanNow(true);
     }, 180000);
   });
 })();
