@@ -1,6 +1,6 @@
 {
   "name": "voltra-standalone",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "engines": { "node": ">=20" },
@@ -8,5 +8,8 @@
     "start": "node src/index.mjs",
     "dev": "node --watch src/index.mjs",
     "test": "node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "24.1.3"
   }
 }
