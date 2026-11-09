@@ -4,7 +4,7 @@ This is a **self-contained Android application**, not an HTML shortcut to a host
 
 ## Installing
 
-- Get the Preview APK from [GitHub Releases](https://github.com/aYmAn-Helmy/voltra-standalone/releases/tag/android-preview-v0.1.0). Choose the APK asset.
+- Get the Preview APK from [GitHub Releases](https://github.com/aYmAn-Helmy/voltra-standalone/releases/tag/android-preview-v0.2.0). Choose the APK asset.
 - Android **8.0 (API 26)** or newer. Enable installation from your browser/files app when Android asks.
 - Connect the phone to the **same private Wi-Fi network** as the MTTL-W01 Standalone firmware devices.
 - Launch the app. It scans the current **/24 IPv4 LAN segment** automatically, confirms `/api/status` returns a real device MAC and `/api/device` has four channels, then saves verified sources.
@@ -45,3 +45,17 @@ Build uses Android Gradle Plugin 8.7.3, Gradle 8.10.2, Java 17 and compileSdk 35
 ## Verification
 
 GitHub Actions confirms that the Android sources compile to an APK. Network and firmware behavior in this first Preview have **not yet been verified on real hardware or an Android device**; test discovery and simple output control on one accessible strip before using power scheduling, Wi-Fi changes or OTA.
+
+## Voltra Pro UI v0.2.0
+
+- Professional mobile-first redesign: branded overview, dark navy/indigo/teal palette, custom app launcher, responsive 2×2 energy metrics and accessible 2×2 outlet controls.
+- Four-screen Android bottom navigation: Home, Devices, Wi-Fi Network, App Settings.
+- First-use onboarding and direct scan/add actions, actual progress during local /24 discovery.
+- Device favorites saved locally on the phone, plus a favorites filter and stable ordering.
+- Light and dark appearances; Android status/navigation bars update to match the chosen theme.
+- Foreground auto-scan preference (enabled by default). Disabling it stops initial/recurring auto-scans; the scan button still works.
+- Real-time SSE badges, live wattage trend and original full controls remain visible within each device card.
+- Expanded device settings forms are preserved during refresh; Android system Back collapses open settings, then navigates home instead of immediately exiting.
+- All resources ship inside the APK, including icons/CSS/JS; **no internet connection or remote font assets needed**.
+
+Code verification runs JavaScript transport tests and DOM-based UI interactions with jsdom in addition to the Android APK compilation. A real phone and physical power strip still need acceptance testing before production use.

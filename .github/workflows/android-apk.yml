@@ -21,10 +21,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Validate Android JavaScript transport
+      - name: Validate transport and professional Android UI
         run: |
           node --check public/mobile.js
+          node --check public/pro-ui.js
           node --test test/mobile.test.mjs
+          npm install --no-save --ignore-scripts jsdom@24.1.3
+          node --test test/pro-ui.test.mjs
       - name: Use hosted Android SDK
         run: |
           echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
@@ -38,7 +41,7 @@ jobs:
         run: |
           file=android/app/build/outputs/apk/debug/app-debug.apk
           test -s "$file"
-          for asset in index.html app.js settings.js live.js mobile.js style.css; do
+          for asset in index.html app.js settings.js live.js mobile.js pro-ui.js style.css pro-ui.css; do
             unzip -Z1 "$file" | grep -Fx "assets/$asset"
           done
           unzip -Z1 "$file" | grep -Fx classes.dex
@@ -54,11 +57,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag=android-preview-v0.1.0
+          tag=android-preview-v0.2.0
           path=android/app/build/outputs/apk/debug/Voltra-Standalone.apk
           if ! gh release view "$tag" >/dev/null 2>&1; then
-            gh release create "$tag" --prerelease --title 'Voltra Standalone Android (Preview)' \
-              --notes 'Installable debug APK for local Wi-Fi discovery and full standalone device controls. Not yet validated on physical hardware. Uses local LAN HTTP (no cloud). Debug signing keys may change between builds.' \
+            gh release create "$tag" --prerelease --title 'Voltra Pro Android v0.2.0 (Preview)' \
+              --notes 'Professional Android UI: four-tab bottom navigation, smart onboarding/discovery, live SSE device cards, favorites, light/dark theme and existing full standalone controls. LAN only; physical hardware validation outstanding. Debug signing is temporary.' \
               --target "$GITHUB_SHA"
           fi
           gh release upload "$tag" "$path" --clobber
