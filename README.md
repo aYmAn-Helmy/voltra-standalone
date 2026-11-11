@@ -65,7 +65,7 @@ when the local DHCP server reassigns a remembered address.
 ### 2. Open on Android or web
 
 Open `http://<YOUR-HUB-IP>:8098` in a browser on the same Wi-Fi, or install
-the preview Android APK from [PowerA Releases](https://github.com/aYmAn-Helmy/voltra-standalone/releases/tag/powera-preview-v0.3.0).
+the preview Android APK from [PowerA Releases](https://github.com/aYmAn-Helmy/voltra-standalone/releases/tag/powera-preview-v0.3.1).
 Android 8.0+ is supported. The app discovers the Hub automatically in
 the **same /24 Wi-Fi segment**; type its IP on the welcome screen if needed.
 

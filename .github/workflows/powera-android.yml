@@ -52,23 +52,23 @@ jobs:
           test -s "$apk"
           unzip -Z1 "$apk" | grep -Fx classes.dex
           mkdir -p powera/dist
-          cp "$apk" powera/dist/PowerA-v0.3.0-preview.apk
-          ls -lh powera/dist/PowerA-v0.3.0-preview.apk
+          cp "$apk" powera/dist/PowerA-v0.3.1-preview.apk
+          ls -lh powera/dist/PowerA-v0.3.1-preview.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: PowerA-Android-v0.3.0
-          path: powera/dist/PowerA-v0.3.0-preview.apk
+          name: PowerA-Android-v0.3.1
+          path: powera/dist/PowerA-v0.3.1-preview.apk
           retention-days: 90
       - name: Publish PowerA preview release
         if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag=powera-preview-v0.3.0
-          apk=powera/dist/PowerA-v0.3.0-preview.apk
+          tag=powera-preview-v0.3.1
+          apk=powera/dist/PowerA-v0.3.1-preview.apk
           if ! gh release view "$tag" >/dev/null 2>&1; then
             gh release create "$tag" --prerelease --target "$GITHUB_SHA" \
-              --title 'PowerA Android 0.3.0 Preview' \
-              --notes 'Original Android app with local Wi-Fi Hub discovery and integrated Stock/Standalone dashboard, without accounts or tokens. Requires separately running PowerA Hub and stock powerk controller for stock strips. Local trusted LAN ONLY; unsafe on guest/public Wi-Fi. Debug-signed preview; physical hardware verification pending.'
+              --title 'PowerA Android 0.3.1 Preview' \
+              --notes 'PowerA 0.3.1: independent native TCP 10086 Stock receiver in the Python Hub, plus direct Standalone HTTP. The Android app discovers the Hub on LAN. Original Stock strips need one-time pairing to the Hub IP; no separate powerk process or account/token needed. Use only on trusted private LAN, never port forward. Hardware validation pending. See docs/STOCK_PAIRING_AR.md on PowerA branch.'
           fi
           gh release upload "$tag" "$apk" --clobber
