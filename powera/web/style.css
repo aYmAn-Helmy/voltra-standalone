@@ -136,3 +136,26 @@ html[data-theme=light] .notification.unread{background:#eef7ff}
 .history-legend span{font-size:10px;color:var(--muted);display:inline-flex;align-items:center;gap:5px}
 .history-legend span::before{content:'';display:inline-block;height:8px;width:8px;border-radius:50%;background:var(--chart-color)}
 .history-chart>.quiet{font-size:10px;text-align:center}
+
+/* P1 Smart Timer: visual hours, weekday selection and durable schedule rows */
+.tabs{flex-wrap:wrap}
+.schedule-form{display:flex;flex-direction:column;gap:17px;margin-bottom:24px}
+.schedule-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.schedule-grid label{display:flex;flex-direction:column;gap:7px;color:var(--muted);font-size:12px;min-width:0}
+.schedule-grid .wide{grid-column:span 2}
+.schedule-grid input,.schedule-grid select{width:100%}
+.weekday-list{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.weekday-list label{display:flex;align-items:center;gap:6px;white-space:nowrap;background:var(--panel2);padding:9px 12px;border:1px solid var(--stroke);border-radius:10px;cursor:pointer;font-size:12px}
+.weekday-list input{accent-color:#45d5b2}
+.smart-timeline{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-top:8px}
+.smart-hour{border:1px solid var(--stroke);border-radius:9px;background:var(--panel2);color:var(--text);padding:9px 3px;cursor:pointer;font-size:11px;min-height:38px}
+.smart-hour:hover,.smart-hour.selected{background:var(--blue);color:#fff;border-color:#8ba5ff}
+.schedule-list,.timer-list{display:grid;gap:10px;margin-bottom:24px}
+.schedule-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--stroke);border-radius:14px;padding:13px}
+.schedule-description{flex:1;min-width:150px}
+.schedule-description strong{font-size:12px}
+.schedule-description small{display:block;color:var(--muted);font-size:10px}
+.schedule-row p{margin:3px 0}
+.schedule-actions{display:flex;gap:8px;flex-wrap:wrap}
+.outlet-timer{width:100%;margin-top:9px;min-height:32px;font-size:10px!important;padding:5px 4px}
+@media(max-width:700px){.schedule-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.schedule-grid .wide{grid-column:span 2}.smart-timeline{grid-template-columns:repeat(4,minmax(0,1fr))}}

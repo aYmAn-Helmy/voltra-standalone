@@ -47,6 +47,7 @@
     <div class="tabs" role="tablist" aria-label="أقسام التطبيق">
       <button class="tab active" data-page="devices" role="tab" aria-selected="true">المشتركات</button>
       <button class="tab" data-page="rooms" role="tab" aria-selected="false">الغرف</button>
+      <button class="tab" data-page="schedules" role="tab" aria-selected="false">الجدولة</button>
       <button class="tab" data-page="activity" role="tab" aria-selected="false">الإشعارات</button>
       <button class="tab" data-page="settings" role="tab" aria-selected="false">الإعدادات</button>
     </div>
@@ -63,6 +64,47 @@
         <p class="quiet">اجمع مخارج من أي مشترك داخل نفس الغرفة وتحكم فيها معًا.</p>
         <form id="room-form" class="card inline-form"><input name="name" required maxlength="64" placeholder="مثال: غرفة المكتب" aria-label="اسم الغرفة"><button class="button primary" type="submit">إضافة غرفة</button></form>
         <div id="room-list" class="room-list"></div>
+      </section>
+
+      <section id="schedules-page" class="page" hidden>
+        <div class="section-title"><div><p class="section-kicker">SMART TIMER</p><h2>المؤقتات والجدولة</h2></div></div>
+        <p class="quiet">أنشئ موعد تشغيل أو فصل مرة واحدة أو أسبوعيًا. الـHub لازم يفضل شغال علشان ينفّذ الأوامر؛ المواعيد اللي تفوت مش هتتنفذ متأخر.</p>
+        <form id="schedule-form" class="card schedule-form">
+          <div class="schedule-grid">
+            <label>المشترك<select id="schedule-device" required></select></label>
+            <label>المخرج<select id="schedule-outlet" required></select></label>
+            <label>الإجراء<select id="schedule-action"><option value="on">تشغيل ON</option><option value="off">فصل OFF</option></select></label>
+            <label>نوع الجدولة<select id="schedule-repeat"><option value="once">مرة واحدة</option><option value="weekly">أسبوعيًا</option></select></label>
+            <label id="schedule-date-wrap">التاريخ<input id="schedule-date" type="date" required></label>
+            <label>التوقيت<input id="schedule-clock" type="time" value="20:00" required></label>
+            <label class="wide">المنطقة الزمنية
+              <input id="schedule-zone" list="zone-suggestions" value="Africa/Cairo" required>
+              <datalist id="zone-suggestions"><option value="Africa/Cairo"><option value="Asia/Riyadh"><option value="Europe/London"><option value="America/New_York"><option value="UTC"></datalist>
+            </label>
+          </div>
+          <div id="weekday-wrap" hidden>
+            <p class="quiet">اختار أيام التكرار</p>
+            <div class="weekday-list">
+              <label><input type="checkbox" value="5">السبت</label>
+              <label><input type="checkbox" value="6">الأحد</label>
+              <label><input type="checkbox" value="0">الإثنين</label>
+              <label><input type="checkbox" value="1">الثلاثاء</label>
+              <label><input type="checkbox" value="2">الأربعاء</label>
+              <label><input type="checkbox" value="3">الخميس</label>
+              <label><input type="checkbox" value="4">الجمعة</label>
+            </div>
+          </div>
+          <div class="smart-hours">
+            <p class="quiet">اختيار سريع للساعة — Smart Timer</p>
+            <div id="smart-timeline" class="smart-timeline" role="group" aria-label="اختيار الساعة"></div>
+          </div>
+          <button type="submit" class="button primary">إنشاء الجدول</button>
+        </form>
+        <div class="section-title"><h3>الجداول المحفوظة</h3><button id="schedules-refresh" class="button muted">تحديث</button></div>
+        <div id="schedule-list" class="schedule-list"></div>
+        <div class="section-title"><h3>مؤقتات إرجاع الحالة</h3></div>
+        <p class="quiet">اضغط «مؤقت رجوع» داخل أي مخرج لتغييره مؤقتًا، وبعد المدة يرجع لحالته الأصلية لو ما حصلش تغيير خارجي.</p>
+        <div id="timer-list" class="timer-list"></div>
       </section>
 
       <section id="activity-page" class="page" hidden>

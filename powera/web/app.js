@@ -100,6 +100,7 @@
       section.hidden = section.id !== name + '-page';
     });
     if (name === 'rooms') loadRooms();
+    if (name === 'schedules') loadSchedules();
     if (name === 'activity') loadNotifications();
     if (name === 'settings') $('price-input').value = String(data.pricePerKwh || 0);
   }
@@ -227,6 +228,23 @@
       watts.append(n('small', '', ' W'));
       tile.append(watts, n('div', 'reading', number(o.energyKwh, 3) + ' kWh'),
         n('div', 'reading', o.temperatureC == null ? '—' : number(o.temperatureC) + ' °C'));
+      const timerButton = button('⏱ مؤقت رجوع', 'button muted outlet-timer');
+      timerButton.disabled = !isAvailable(d) || !known;
+      doubleTap(timerButton, async () => {
+        const minutes = window.prompt('المدة بالدقائق (من 1 إلى 1440)، وبعدها يرجع للحالة الأصلية:', '15');
+        if (minutes === null) return;
+        if (!/^[0-9]{1,4}$/.test(minutes.trim()) || Number(minutes) < 1 || Number(minutes) > 1440) {
+          toast('ادخل عدد دقائق صحيح من 1 إلى 1440', true); return;
+        }
+        if (!window.confirm('سيتم ' + (o.on ? 'فصل' : 'تشغيل') + ' ' + o.name +
+          ' الآن، ثم محاولة إرجاعه لحالته الأصلية بعد ' + minutes + ' دقيقة. تأكيد؟')) return;
+        const result = await request('/api/timers', {
+          deviceId: d.id, outlet: o.index, on: !o.on, minutes: Number(minutes), confirm: true
+        });
+        toast('المؤقت اتسجل. موعد الرجوع: ' + new Date(result.dueAt).toLocaleString('ar-EG'));
+        await refresh();
+      });
+      tile.append(timerButton);
       outlets.append(tile);
     }
     card.append(outlets);
@@ -304,6 +322,7 @@
     const result = await request('/api/status');
     data = result;
     render();
+    if (activePage === 'schedules') scheduleTargets();
   }
   async function safeRefresh() {
     try { await refresh(); }
@@ -378,6 +397,99 @@
       }
     } catch (e) { toast(e.message, true); }
   }
+  function scheduleTargets() {
+    const devices = $('schedule-device');
+    const selected = devices.value;
+    devices.replaceChildren();
+    for (const d of data.devices) {
+      const option = n('option', '', d.name + ' • ' + d.type);
+      option.value = d.id;
+      devices.append(option);
+    }
+    if (data.devices.some(d => d.id === selected)) devices.value = selected;
+    updateScheduleOutlets();
+  }
+
+  function updateScheduleOutlets() {
+    const outlet = $('schedule-outlet');
+    const old = outlet.value;
+    outlet.replaceChildren();
+    const device = data.devices.find(d => d.id === $('schedule-device').value);
+    for (const o of device?.outlets || []) {
+      const option = n('option', '', o.name);
+      option.value = String(o.index);
+      outlet.append(option);
+    }
+    if ([...outlet.options].some(opt => opt.value === old)) outlet.value = old;
+  }
+
+  function scheduleFormType() {
+    const weekly = $('schedule-repeat').value === 'weekly';
+    $('schedule-date-wrap').hidden = weekly;
+    $('schedule-date').required = !weekly;
+    $('weekday-wrap').hidden = !weekly;
+  }
+
+  async function loadSchedules() {
+    try {
+      scheduleTargets();
+      const [all, currentTimers] = await Promise.all([
+        request('/api/schedules'), request('/api/timers')
+      ]);
+      const list = $('schedule-list');
+      list.replaceChildren();
+      if (!all.schedules.length) list.append(n('p', 'empty', 'مفيش جداول محفوظة لسه.'));
+      for (const item of all.schedules) {
+        const card = n('div', 'schedule-row');
+        const d = data.devices.find(x => x.id === item.deviceId);
+        const o = d?.outlets.find(o => o.index === item.outlet);
+        const label = (d?.name || item.deviceId) + ' / ' + (o?.name || 'مخرج ' + item.outlet);
+        const text = n('div', 'schedule-description');
+        text.append(n('strong', '', label));
+        text.append(n('p', 'quiet',
+          (item.on ? 'تشغيل' : 'فصل') + ' • ' +
+          (item.repeat === 'weekly' ? 'أسبوعيًا، أيام ' + item.weekdays.join('،') : 'مرة واحدة ' + item.date) +
+          ' • ' + item.clock + ' (' + item.timezone + ')'));
+        text.append(n('small', '',
+          item.enabled && item.nextRunAt ? 'القادم: ' + new Date(item.nextRunAt).toLocaleString('ar-EG') :
+          'متوقف • ' + (item.lastResult || '—')));
+        const actions = n('div', 'schedule-actions');
+        const toggle = button(item.enabled ? 'إيقاف' : 'تفعيل', 'button muted', async () => {
+          try {
+            if (!window.confirm('تأكيد تغيير حالة الجدول؟')) return;
+            await request('/api/schedules/enabled', { id: item.id, enabled: !item.enabled });
+            await loadSchedules();
+          } catch (e) { toast(e.message, true); }
+        });
+        const remove = button('حذف', 'button danger', async () => {
+          try {
+            if (!window.confirm('حذف الجدول نهائيًا؟')) return;
+            await request('/api/schedules/remove', { id: item.id });
+            await loadSchedules();
+          } catch (e) { toast(e.message, true); }
+        });
+        actions.append(toggle, remove);
+        card.append(text, actions);
+        list.append(card);
+      }
+      const timers = $('timer-list');
+      timers.replaceChildren();
+      const active = currentTimers.timers.filter(x => ['active', 'pending', 'needs_review', 'claimed'].includes(x.status));
+      if (!active.length) timers.append(n('p', 'empty', 'مفيش مؤقتات رجوع نشطة.'));
+      for (const item of active) {
+        const d = data.devices.find(x => x.id === item.deviceId);
+        const box = n('div', 'schedule-row');
+        const state = item.status === 'active' ? 'شغّال' : 'مراجعة يدوية مطلوبة';
+        box.append(n('strong', '', (d?.name || item.deviceId) + ' / مخرج ' +
+          item.outlet + ' • ' + state));
+        box.append(n('p', 'quiet', 'وقت الرجوع المتوقع: ' +
+          new Date(item.dueAt).toLocaleString('ar-EG') +
+          (item.detail ? ' • ' + item.detail : '')));
+        timers.append(box);
+      }
+    } catch (e) { toast(e.message, true); }
+  }
+
   async function loadNotifications() {
     try {
       const result = await request('/api/notifications');
@@ -407,6 +519,47 @@
 
   document.querySelectorAll('.tab').forEach(tab =>
     tab.addEventListener('click', () => page(tab.dataset.page)));
+  $('schedule-device').addEventListener('change', updateScheduleOutlets);
+  $('schedule-repeat').addEventListener('change', scheduleFormType);
+  $('schedule-date').value = new Date().toLocaleDateString('sv-SE');
+  const guessedZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  if (guessedZone && /^[A-Za-z][A-Za-z0-9_+./-]{0,60}$/.test(guessedZone)) {
+    $('schedule-zone').value = guessedZone;
+  }
+  for (let hour = 0; hour < 24; hour += 2) {
+    const time = String(hour).padStart(2, '0') + ':00';
+    $('smart-timeline').append(button(time, 'smart-hour', () => {
+      $('schedule-clock').value = time;
+      document.querySelectorAll('.smart-hour').forEach(x =>
+        x.classList.toggle('selected', x.textContent === time));
+    }));
+  }
+  scheduleFormType();
+  $('schedules-refresh').addEventListener('click', loadSchedules);
+  $('schedule-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const weekly = $('schedule-repeat').value === 'weekly';
+    const days = [...document.querySelectorAll('#weekday-wrap input:checked')].map(x => Number(x.value));
+    if (weekly && !days.length) { toast('اختار يوم واحد على الأقل', true); return; }
+    const deviceId = $('schedule-device').value;
+    if (!deviceId) { toast('لازم يكون فيه مشترك معروف', true); return; }
+    const payload = {
+      deviceId, outlet: Number($('schedule-outlet').value),
+      on: $('schedule-action').value === 'on',
+      repeat: weekly ? 'weekly' : 'once',
+      clock: $('schedule-clock').value,
+      date: weekly ? null : $('schedule-date').value,
+      timezone: $('schedule-zone').value,
+      weekdays: days, confirm: true
+    };
+    if (!window.confirm('تأكيد إنشاء موعد ' + (payload.on ? 'تشغيل' : 'فصل') +
+      ' الجهاز؟ لازم الـHub يفضل شغال وقت التنفيذ.')) return;
+    try {
+      const result = await request('/api/schedules', payload);
+      toast('تم إنشاء الجدول. الموعد القادم: ' + new Date(result.nextRunAt).toLocaleString('ar-EG'));
+      await loadSchedules();
+    } catch (e) { toast(e.message, true); }
+  });
   $('fav-only').addEventListener('click', () => {
     favoritesOnly = !favoritesOnly;
     $('fav-only').classList.toggle('active', favoritesOnly);
