@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0a1120">
+  <meta name="color-scheme" content="dark light">
+  <meta name="description" content="PowerA: لوحة موحدة للمشتركات الذكية Stock وStandalone">
+  <title>PowerA — Smart Power Control</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="identity">
+        <div class="brand-icon" aria-hidden="true">ϟ</div>
+        <div><h1>Power<span>A</span></h1><p>SMART POWER CONTROL</p></div>
+      </div>
+      <div class="header-tools">
+        <span id="connection" class="chip"><i class="dot"></i> جاري التحديث</span>
+        <button id="theme" class="icon-button" title="تغيير الوضع" aria-label="تغيير الوضع الليلي">☾</button>
+        <button id="refresh" class="icon-button" title="تحديث الأجهزة" aria-label="تحديث الأجهزة">↻</button>
+      </div>
+    </header>
+
+    <section class="welcome">
+      <div>
+        <p class="section-kicker">YOUR SMART POWER</p>
+        <h2>كل مشتركاتك، في مكان واحد.</h2>
+        <p>تحكم في مخارج مشتركات <strong>Stock</strong> و<strong>Standalone</strong> من لوحة واحدة، داخل شبكتك المحلية.</p>
+        <div class="hero-actions">
+          <button id="all-off" class="button muted">إيقاف جميع المشتركات</button>
+          <button id="all-on" class="button primary">تشغيل جميع المشتركات</button>
+        </div>
+      </div>
+      <div class="hero-art" aria-hidden="true"><span>ϟ</span></div>
+    </section>
+
+    <section class="overview" aria-label="ملخص الطاقة">
+      <div class="metric"><span>المشتركات</span><strong id="device-total">—</strong><small id="device-online">— متصل</small></div>
+      <div class="metric"><span>المخارج الشغالة</span><strong id="outlets-on">—</strong><small>من كل الأجهزة</small></div>
+      <div class="metric"><span>الاستهلاك اللحظي</span><strong id="power-total">— W</strong><small>للأجهزة المتصلة</small></div>
+      <div class="metric"><span>سعر الكيلوواط/ساعة</span><strong id="price-total">—</strong><small>جنيه مصري</small></div>
+    </section>
+
+    <div class="tabs" role="tablist" aria-label="أقسام التطبيق">
+      <button class="tab active" data-page="devices" role="tab" aria-selected="true">المشتركات</button>
+      <button class="tab" data-page="rooms" role="tab" aria-selected="false">الغرف</button>
+      <button class="tab" data-page="activity" role="tab" aria-selected="false">الإشعارات</button>
+      <button class="tab" data-page="settings" role="tab" aria-selected="false">الإعدادات</button>
+    </div>
+
+    <main>
+      <section id="devices-page" class="page">
+        <div class="section-title"><div><p class="section-kicker">DEVICES</p><h2>المشتركات الذكية</h2></div><span class="quiet">اضغط مرتين للتشغيل والفصل</span></div>
+        <div class="filters"><input id="search" type="search" placeholder="ابحث عن مشترك أو مخرج…" aria-label="بحث"><select id="type-filter" aria-label="نوع الفيرموير"><option value="all">كل الأنواع</option><option value="stock">Stock</option><option value="standalone">Standalone</option></select><select id="online-filter" aria-label="حالة الاتصال"><option value="all">كل الحالات</option><option value="online">متصل</option><option value="offline">غير متصل</option></select></div>
+        <div id="device-list" class="device-list" aria-live="polite"><p class="empty">جاري البحث عن المشتركـات…</p></div>
+      </section>
+
+      <section id="rooms-page" class="page" hidden>
+        <div class="section-title"><div><p class="section-kicker">ROOMS & GROUPS</p><h2>الغرف والمجموعات</h2></div></div>
+        <p class="quiet">اجمع مخارج من أي مشترك داخل نفس الغرفة وتحكم فيها معًا.</p>
+        <form id="room-form" class="card inline-form"><input name="name" required maxlength="64" placeholder="مثال: غرفة المكتب" aria-label="اسم الغرفة"><button class="button primary" type="submit">إضافة غرفة</button></form>
+        <div id="room-list" class="room-list"></div>
+      </section>
+
+      <section id="activity-page" class="page" hidden>
+        <div class="section-title"><div><p class="section-kicker">INBOX</p><h2>مركز الإشعارات</h2></div><button class="button muted" id="notifications-refresh">تحديث</button></div>
+        <p class="quiet">إشعارات اتصال وانقطاع الأجهزة. يتم الاحتفاظ بها محليًا داخل PowerA Hub.</p>
+        <div id="notifications" class="notification-list"></div>
+      </section>
+
+      <section id="settings-page" class="page" hidden>
+        <div class="section-title"><div><p class="section-kicker">SETTINGS</p><h2>إعدادات PowerA</h2></div></div>
+        <form id="price-form" class="card stack">
+          <h3>حساب تكلفة الطاقة</h3>
+          <label for="price-input">سعر الكيلوواط/ساعة (EGP)</label>
+          <input id="price-input" name="price" type="number" min="0" max="100" step="0.01" required placeholder="مثال: 2.25">
+          <button class="button primary" type="submit">حفظ السعر</button>
+          <p class="quiet">التكلفة التقديرية = استهلاك kWh × السعر المدخل. القراءات تأتي من الأجهزة، ولا تمثل فاتورة رسمية.</p>
+        </form>
+        <form id="auth-form" class="card stack">
+          <h3>اتصال PowerA Hub</h3>
+          <label for="token-input">رمز الوصول (عند تشغيل اللوحة على الشبكة)</label>
+          <input id="token-input" type="password" autocomplete="off" placeholder="POWER_A_TOKEN">
+          <button type="submit" class="button muted">حفظ الرمز للجلسة الحالية</button>
+          <p class="quiet">يُحفظ الرمز داخل Session Storage للمتصفح فقط، ولا يتم تضمينه في رابط الصفحة.</p>
+        </form>
+        <div class="card stack">
+          <h3>معلومات النظام</h3>
+          <p class="quiet">التحكم في المخارج يتم عبر طلب حالة صريحة مع تأكيد القراءة. لن يُعاد إرسال أمر مشكوك في نتيجته تلقائيًا.</p>
+          <p class="quiet">الحسابات والمشاركة والجدولة المتقدمة والإشعارات الفورية ودعم iOS والقدرات المرتبطة بالفيرموير ضمن مراحل تطوير لاحقة.</p>
+        </div>
+      </section>
+    </main>
+    <footer>PowerA • Stock + Standalone • Local-first</footer>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </div>
+</body>
+</html>
