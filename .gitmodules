@@ -1,0 +1,4 @@
+[submodule "upstream/powerk"]
+	path = upstream/powerk
+	url = https://github.com/ahmedtohamy1/powerk.git
+	branch = master
