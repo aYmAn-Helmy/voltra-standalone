@@ -9,7 +9,7 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
- import ipaddress
+import ipaddress
 import json
 import os
 from pathlib import Path
@@ -484,7 +484,8 @@ class ApiHandler(BaseHTTPRequestHandler):
             host = self.headers.get("Host", "")
             if host.startswith("["):
                 return False
-            presented = ipaddress.ip_address(host.split(":")[0] if host != "localhost" else "127.0.0.1")
+            host_name = host.split(":")[0]
+            presented = ipaddress.ip_address("127.0.0.1" if host_name == "localhost" else host_name)
             if peer.version != 4 or local.version != 4 or presented.version != 4:
                 return False
             private = (ipaddress.ip_network("10.0.0.0/8"),
