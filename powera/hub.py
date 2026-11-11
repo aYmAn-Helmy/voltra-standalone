@@ -21,6 +21,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse, parse_qs
 from urllib.request import Request, build_opener
 from powera.scheduler import Scheduler, ScheduleError
+from powera.stock_bridge import StockBridge, StockError
 
 MAC_PATTERN = re.compile(r"^[0-9A-F]{12}$")
 ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{1,45}$")
@@ -124,7 +125,8 @@ def stock_device(source: dict, raw: dict) -> dict:
     return {
         "id": "stock:" + mac, "mac": mac, "type": "stock", "source": source["id"],
         "name": raw.get("name") or f"MTTL {mac[-6:]}",
-        "online": raw.get("online") is True, "controlAvailable": raw.get("online") is True,
+        "online": raw.get("online") is True,
+        "controlAvailable": raw.get("online") is True and raw.get("ready", True) is True,
         "firmware": raw.get("fw"), "rssi": raw.get("rssi"),
         "voltageV": reading(raw.get("voltage")) if raw.get("online") is True else None,
         "currentA": reading(raw.get("current_a")) if raw.get("online") is True else None,
@@ -171,16 +173,18 @@ class Hub:
     def __init__(self, config: dict, db_path: str = ":memory:", requester=_request):
         self.sources = []
         for s in config.get("sources", []):
-            if not isinstance(s, dict) or s.get("type") not in ("stock", "standalone") or not ID_PATTERN.fullmatch(str(s.get("id", ""))):
+            if not isinstance(s, dict) or s.get("type") not in ("stock", "stock-native", "standalone") or not ID_PATTERN.fullmatch(str(s.get("id", ""))):
                 raise HubError("Invalid source configuration")
             source = dict(s)
-            source["url"] = private_url(str(source.get("url", "")))
+            if source["type"] != "stock-native":
+                source["url"] = private_url(str(source.get("url", "")))
             if source["type"] == "standalone":
                 source["mac"] = mac_id(source.get("mac", ""))
             self.sources.append(source)
         if len(self.sources) > 40 or len({s["id"] for s in self.sources}) != len(self.sources):
             raise HubError("Too many or duplicate sources")
         self.requester = requester
+        self.stock_bridge = None   # started only by the process entrypoint
         self.config = config
         self.db_lock = threading.RLock()
         self.refresh_lock = threading.Lock()
@@ -228,9 +232,12 @@ class Hub:
         found = {}
         for source in self.sources:
             try:
-                if source["type"] == "stock":
-                    response = self.request(source, "/api/state")
-                    items = response.get("devices")
+                if source["type"] in ("stock", "stock-native"):
+                    if source["type"] == "stock-native":
+                        items = self.stock_bridge.snapshot() if self.stock_bridge else []
+                    else:
+                        response = self.request(source, "/api/state")
+                        items = response.get("devices")
                     if not isinstance(items, list):
                         raise HubError("Invalid powerk device list", 502)
                     for raw in items:
@@ -306,6 +313,12 @@ class Hub:
                         "outletsOn": sum(o["on"] is True for x in online for o in x["outlets"]),
                         "powerW": round(power, 2)},
             "currency": "EGP", "pricePerKwh": self.get_price(),
+            "stockReceiver": {
+                "enabled": any(s["type"] == "stock-native" for s in self.sources),
+                "listening": self.stock_bridge is not None and self.stock_bridge.server is not None,
+                "port": self.stock_bridge.port if self.stock_bridge else 10086,
+                "connected": sum(x["online"] is True and x["type"] == "stock" for x in values),
+            },
             "refreshedAt": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -324,7 +337,14 @@ class Hub:
         if not device["controlAvailable"]:
             raise HubError("Device offline or not ready", 409)
         source = self._source_for(device)
-        if source["type"] == "stock":
+        if source["type"] == "stock-native":
+            if self.stock_bridge is None:
+                raise HubError("Native stock receiver is not running", 503)
+            try:
+                self.stock_bridge.command(device["mac"], outlet, on)
+            except StockError as exc:
+                raise HubError(str(exc), 504) from exc
+        elif source["type"] == "stock":
             body = json.dumps({"mac": device["mac"], "outlet": outlet, "on": on}).encode("utf-8")
             ack = self.request(source, "/api/onoff", method="POST", body=body)
             if ack.get("ok") is not True or ack.get("confirmed") is not True:
@@ -622,12 +642,22 @@ def serve(argv=None):
         if args.host not in ("0.0.0.0", "127.0.0.1"):
             raise HubError("Use 0.0.0.0 for trusted-LAN use or 127.0.0.1 for local-only use")
         hub = Hub(cfg, db_path=args.db)
+        # Stock strips call *into* this listener. They are not discovered by
+        # Wi-Fi HTTP scans; their stored server IP must point to this machine.
+        if any(s["type"] == "stock-native" for s in hub.sources):
+            hub.stock_bridge = StockBridge(host=args.host, port=10086)
+            try:
+                hub.stock_bridge.start()
+            except OSError as exc:
+                raise HubError("Cannot listen on TCP 10086. Stop the old powerk server or another process using this port: " + str(exc)) from exc
         class BoundHandler(ApiHandler):
             pass
         BoundHandler.hub = hub
         BoundHandler.frontend = Path(__file__).resolve().parent / "web"
         httpd = ThreadingHTTPServer((args.host, args.port), BoundHandler)
         print(f"PowerA Hub http://{args.host}:{args.port} | {len(hub.sources)} sources")
+        if hub.stock_bridge:
+            print("Stock TCP receiver listening on port 10086. Set each Stock strip's server IP to this machine.")
         print("NO LOGIN / NO TOKEN — same-LAN /24 clients only. Do not port-forward or use untrusted Wi-Fi.")
         stop = threading.Event()
         def poll():
@@ -649,6 +679,8 @@ def serve(argv=None):
         finally:
             stop.set()
             httpd.server_close()
+            if hub.stock_bridge:
+                hub.stock_bridge.stop()
     except (OSError, ValueError, json.JSONDecodeError, HubError) as exc:
         parser.exit(2, f"PowerA setup error: {exc}\n")
 
