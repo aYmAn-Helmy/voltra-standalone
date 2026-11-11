@@ -22,6 +22,8 @@ from urllib.parse import urlparse, parse_qs
 from urllib.request import Request, build_opener
 from powera.scheduler import Scheduler, ScheduleError
 from powera.stock_bridge import StockBridge, StockError
+from powera.standalone_sync import StandaloneSync, SyncError, public_config, revision
+from powera.energy_history import EnergyLedger, EnergyError
 
 MAC_PATTERN = re.compile(r"^[0-9A-F]{12}$")
 ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{1,45}$")
@@ -68,13 +70,17 @@ class RejectRedirect(HTTPRedirectHandler):
 def _request(origin: str, path: str, *, method: str = "GET",
              body: bytes | None = None, token: str = "",
              content_type: str = "application/json",
-             timeout: float = 5) -> dict:
+             timeout: float = 5, extra_headers: dict | None = None) -> dict:
     headers = {"Accept": "application/json"}
     if token:
         headers["X-Token"] = token
     if method == "POST":
         headers["Origin"] = origin
         headers["Content-Type"] = content_type
+    if extra_headers:
+        if any(k.lower() in ("origin", "host", "content-length") for k in extra_headers):
+            raise HubError("Reserved device request headers")
+        headers.update(extra_headers)
     req = Request(origin + path, data=body, headers=headers, method=method)
     try:
         with build_opener(ProxyHandler({}), RejectRedirect()).open(req, timeout=timeout) as response:
@@ -212,6 +218,16 @@ class Hub:
         self.last_refresh = 0.0
         self.last_sample = 0.0
         self.scheduler = Scheduler(self)
+        self.sync = StandaloneSync(self)
+        self.energy = EnergyLedger(self)
+        with self.db_lock:
+            self.db.execute("""
+                CREATE TABLE IF NOT EXISTS standalone_settings_cache (
+                    device_id TEXT PRIMARY KEY, revision TEXT NOT NULL,
+                    data TEXT NOT NULL, updated_at TEXT NOT NULL
+                )
+            """)
+            self.db.commit()
 
     def request(self, source, path, **opts):
         return self.requester(source["url"], path, token=source.get("token", ""), **opts)
@@ -293,6 +309,7 @@ class Hub:
                                  ("عاد للاتصال: " if d["online"] else "انقطع الاتصال: ") + d["name"])
             self.cached = {d["id"]: d for d in records}
             self.last_refresh = time.monotonic()
+            self.energy.ingest(records)
             if not self.last_sample or self.last_refresh - self.last_sample > 20:
                 at = datetime.now(timezone.utc).isoformat()
                 with self.db_lock:
@@ -303,10 +320,43 @@ class Hub:
                             if o["powerW"] is not None or o["energyKwh"] is not None:
                                 self.db.execute("INSERT INTO readings(at,device_id,outlet,power_w,energy_kwh) VALUES(?,?,?,?,?)",
                                                 (at, d["id"], o["index"], o["powerW"], o["energyKwh"]))
-                    self.db.execute("DELETE FROM readings WHERE at < datetime('now', '-30 days')")
+                    self.db.execute("DELETE FROM readings WHERE at < datetime('now', '-90 days')")
                     self.db.commit()
                 self.last_sample = self.last_refresh
             return self.snapshot()
+
+    def sync_settings_poll(self):
+        """Monitor Standalone persistent config, without writing cached settings back.
+
+        Skip unavailable or invalid device config; keep last known snapshot
+        in SQLite, marked as historical rather than a live state.
+        """
+        for source in self.sources:
+            if source["type"] != "standalone":
+                continue
+            device_id = "standalone:" + source["mac"]
+            try:
+                current = self.sync.read(device_id)
+            except (SyncError, HubError, ValueError):
+                continue
+            config = current["configuration"]
+            new_revision = current["revision"]
+            with self.db_lock:
+                old = self.db.execute(
+                    "SELECT revision FROM standalone_settings_cache WHERE device_id=?",
+                    (device_id,)).fetchone()
+                self.db.execute("""
+                    INSERT INTO standalone_settings_cache(device_id,revision,data,updated_at)
+                    VALUES(?,?,?,?)
+                    ON CONFLICT(device_id) DO UPDATE SET
+                      revision=excluded.revision, data=excluded.data,
+                      updated_at=excluded.updated_at
+                """, (device_id,new_revision,json.dumps(config,ensure_ascii=False),
+                      datetime.now(timezone.utc).isoformat()))
+                self.db.commit()
+            if old and old["revision"] != new_revision:
+                self._notify("settings",device_id,
+                             "تم تحديث إعدادات المشترك على الجهاز؛ PowerA يعرض أحدث نسخة")
 
     def snapshot(self):
         values = [dict(x, outlets=[dict(o) for o in x["outlets"]]) for x in self.cached.values()]
@@ -412,6 +462,21 @@ class Hub:
         if not DEVICE_PATTERN.fullmatch(str(device_id)) or type(outlet) is not int or not 0 <= outlet <= 4:
             raise HubError("Invalid alias target")
         value = name_text(name)
+        if device_id.startswith("standalone:"):
+            before = self.sync.read(device_id)
+            result = self.sync.write(device_id,
+                        "device-name" if outlet == 0 else "outlet-name",
+                        {"name":value} if outlet == 0 else {"index":outlet,"name":value},
+                        before["revision"])
+            # Remove an old purely-local name: the hardware now owns the name.
+            with self.db_lock:
+                old_key = ("device:" + device_id if outlet == 0
+                           else f"outlet:{device_id}:{outlet}")
+                self.db.execute("DELETE FROM labels WHERE key=?", (old_key,))
+                self.db.commit()
+            self.refresh(force=True)
+            return {"ok":True, "name":value, "scope":"standalone-device",
+                    "confirmed":result.get("confirmed",True)}
         key = "device:" + device_id if outlet == 0 else f"outlet:{device_id}:{outlet}"
         with self.db_lock:
             self.db.execute("INSERT INTO labels(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
@@ -578,6 +643,13 @@ class ApiHandler(BaseHTTPRequestHandler):
                 self._json({"schedules": self.hub.scheduler.list()})
             elif path == "/api/timers":
                 self._json({"timers": self.hub.scheduler.timers()})
+            elif path == "/api/device-settings":
+                self._json(self.hub.sync.read(params.get("deviceId", [""])[0]))
+            elif path == "/api/energy/report":
+                self._json(self.hub.energy.report(
+                    days=int(params.get("days",["30"])[0]),
+                    device_id=params.get("deviceId",[None])[0],
+                    zone=params.get("timezone",["Africa/Cairo"])[0]))
             elif path == "/api/history":
                 self._json({"history": self.hub.history(params.get("deviceId", [""])[0],
                                       int(params.get("limit", ["100"])[0]))})
@@ -585,7 +657,7 @@ class ApiHandler(BaseHTTPRequestHandler):
                 self._json({"ok": True, "app": "PowerA", "apiVersion": 2, "mode": "lan"})
             else:
                 raise HubError("Not found", 404)
-        except (HubError, ScheduleError, ValueError, OSError) as exc:
+        except (HubError, ScheduleError, SyncError, EnergyError, ValueError, OSError) as exc:
             self._json({"error": str(exc)}, getattr(exc, "status", 400))
 
     def do_POST(self):
@@ -627,10 +699,15 @@ class ApiHandler(BaseHTTPRequestHandler):
                 res = self.hub.scheduler.delete(data.get("id"))
             elif path == "/api/timers":
                 res = self.hub.scheduler.start_return_timer(data)
+            elif path == "/api/device-settings":
+                res = self.hub.sync.write(
+                    data.get("deviceId"), data.get("section"),
+                    data.get("changes"), data.get("revision"))
             else:
                 raise HubError("Not found", 404)
             self._json(res)
-        except (HubError, ScheduleError, json.JSONDecodeError, ValueError, TypeError) as exc:
+        except (HubError, ScheduleError, SyncError, EnergyError,
+                json.JSONDecodeError, ValueError, TypeError) as exc:
             self._json({"error": str(exc)}, getattr(exc, "status", 400))
 
 
@@ -678,6 +755,9 @@ def serve(argv=None):
                         hub.refresh(force=True)
                         next_refresh = now + 25
                     hub.scheduler.tick()
+                    if not hasattr(poll, "next_sync") or now >= poll.next_sync:
+                        hub.sync_settings_poll()
+                        poll.next_sync = now + 30
                 except Exception as exc:
                     print(f"PowerA poll/schedule warning: {exc}")
                 stop.wait(2.0)
