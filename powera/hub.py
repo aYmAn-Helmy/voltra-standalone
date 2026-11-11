@@ -280,7 +280,7 @@ class Hub:
                                  ("عاد للاتصال: " if d["online"] else "انقطع الاتصال: ") + d["name"])
             self.cached = {d["id"]: d for d in records}
             self.last_refresh = time.monotonic()
-            if self.last_refresh - self.last_sample > 20:
+            if not self.last_sample or self.last_refresh - self.last_sample > 20:
                 at = datetime.now(timezone.utc).isoformat()
                 with self.db_lock:
                     for d in records:
