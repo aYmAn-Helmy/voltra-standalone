@@ -21,24 +21,24 @@ upstream powerk.
 Python 3.10+ recommended (IANA tzdata package / system timezone database is
 required for the scheduler). From the repository root:
 
-\`\`\`bash
+```bash
 git clone --branch PowerA https://github.com/aYmAn-Helmy/voltra-standalone.git
 cd voltra-standalone
 cp powera/config.example.json powera/config.json
 # Set your local stock bridge IP in config.json if it differs from localhost.
 python3 -m powera.hub --config powera/config.json --db powera/data.sqlite3
-\`\`\`
+```
 
-The Hub defaults to listening on \`0.0.0.0:8098\` but **only accepts the same
+The Hub defaults to listening on `0.0.0.0:8098` but **only accepts the same
 private IPv4 /24 subnet** and localhost. If using only a local browser, add
-\`--host 127.0.0.1\` instead.
+`--host 127.0.0.1` instead.
 
 - Stock: run your original [powerk controller](https://github.com/ahmedtohamy1/powerk)
-  on the same server (by default \`http://127.0.0.1:8080\`) or set another
-  private IP in \`config.json\`.
+  on the same server (by default `http://127.0.0.1:8080`) or set another
+  private IP in `config.json`.
 - Standalone: add a source with its **real IP and MAC address** to the list:
 
-\`\`\`json
+```json
 {
   "id": "standalone-office",
   "type": "standalone",
@@ -46,7 +46,7 @@ private IPv4 /24 subnet** and localhost. If using only a local browser, add
   "url": "http://192.168.0.55",
   "mac": "00:11:22:33:44:55"
 }
-\`\`\`
+```
 
 The MAC shown here is a placeholder; replace it with the real device MAC.
 The device is verified by MAC before commands, blocking accidental control
@@ -54,19 +54,19 @@ when the local DHCP server reassigns a remembered address.
 
 ### 2. Open on Android or web
 
-Open \`http://<YOUR-HUB-IP>:8098\` in a browser on the same Wi-Fi, or install
+Open `http://<YOUR-HUB-IP>:8098` in a browser on the same Wi-Fi, or install
 the preview Android APK from [PowerA Releases](https://github.com/aYmAn-Helmy/voltra-standalone/releases/tag/powera-preview-v0.3.0).
 Android 8.0+ is supported. The app discovers the Hub automatically in
 the **same /24 Wi-Fi segment**; type its IP on the welcome screen if needed.
 
-The new Android app is original source in \`powera/android\`, independent of the
+The new Android app is original source in `powera/android`, independent of the
 external Kotlin powerk app, and is built using Java 17 / Android SDK 35:
 
-\`\`\`bash
+```bash
 gradle -p powera/android :app:assembleDebug
-\`\`\`
+```
 
-This creates \`powera/android/app/build/outputs/apk/debug/app-debug.apk\`.
+This creates `powera/android/app/build/outputs/apk/debug/app-debug.apk`.
 GitHub Actions builds a preview APK automatically. Do not distribute the older
 upstream submodule as a derivative without obtaining the author's permission.
 
@@ -111,11 +111,11 @@ types still need real-hardware acceptance testing.
 
 ### 5. Run verification
 
-\`\`\`bash
+```bash
 python3 -m unittest discover -s test -p 'test_powera_*.py' -v
 python3 -m unittest discover -s test -p 'test_branding.py' -v
 node --check powera/web/app.js
-\`\`\`
+```
 
 See [the implementation status for every requested capability](docs/POWER_A_REQUIREMENTS.md).
 
@@ -125,11 +125,11 @@ We use the documented JSON API of
 [ahmedtohamy1/powerk](https://github.com/ahmedtohamy1/powerk) and documented
 Standalone API of
 [af950833/mttl_w01_standalone](https://github.com/af950833/mttl_w01_standalone).
-The former repository is pinned under \`upstream/powerk\` as a **Git submodule**
+The former repository is pinned under `upstream/powerk` as a **Git submodule**
 rather than copying its source into PowerA. The original upstream project did
 not publish a clear redistribution license when checked on 2026-11-11; obtain
 permission before distributing modified copies of its app. PowerA's own Hub,
 web frontend and Android launcher are original, separate implementations.
 
-The earlier upstream-name overlay remains in \`scripts/\` for reference;
-**the app now built/released from \`powera/android\` is the supported PowerA app**.
+The earlier upstream-name overlay remains in `scripts/` for reference;
+**the app now built/released from `powera/android` is the supported PowerA app**.
