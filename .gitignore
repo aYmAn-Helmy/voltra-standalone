@@ -7,3 +7,4 @@ __pycache__/
 powera/android/.gradle/
 powera/android/**/build/
 powera/dist/
+node_modules/

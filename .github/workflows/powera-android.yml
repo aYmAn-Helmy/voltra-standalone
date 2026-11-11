@@ -8,6 +8,7 @@ on:
       - 'powera/web/**'
       - 'test/test_powera_hub.py'
       - 'test/test_powera_scheduler.py'
+      - 'test/powera-web.test.mjs'
       - 'powera/scheduler.py'
       - '.github/workflows/powera-android.yml'
   workflow_dispatch:
@@ -25,6 +26,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Install web UI test dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Test unified app web UX
+        run: node --test test/powera-web.test.mjs
       - name: Verify PowerA Hub code and web frontend
         run: |
           python3 -m py_compile powera/hub.py powera/scheduler.py

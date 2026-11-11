@@ -1,0 +1,12 @@
+{
+  "name": "powera-local-controller",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:web": "node --test test/powera-web.test.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "24.1.3"
+  }
+}
