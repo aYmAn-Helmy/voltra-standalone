@@ -12,7 +12,6 @@
   const number = (x, digits = 1) =>
     typeof x === 'number' && Number.isFinite(x)
       ? x.toLocaleString('en-US', { maximumFractionDigits: digits }) : '—';
-  let token = sessionStorage.getItem('powera.token') || '';
   let data = { devices: [], summary: {}, pricePerKwh: 0 };
   let rooms = [];
   let activePage = 'devices';
@@ -32,8 +31,7 @@
       method: body === undefined ? 'GET' : 'POST',
       cache: 'no-store',
       headers: {
-        ...(token ? { 'X-PowerA-Token': token } : {}),
-        ...(body === undefined ? {} : { 'Content-Type': 'application/json' })
+        ...(body === undefined ? {} : { 'Content-Type': 'application/json', 'X-PowerA-Client': 'PowerA' })
       },
       ...(body === undefined ? {} : { body: JSON.stringify(body) })
     });
@@ -213,7 +211,6 @@
     catch (e) {
       $('connection').classList.remove('connected');
       $('connection').lastChild.textContent = 'تعذر الاتصال بالخادم';
-      if (e.message.includes('token') || e.message.includes('401')) page('settings');
       toast(e.message, true);
     }
   }
@@ -324,15 +321,6 @@
   });
   const savedTheme = localStorage.getItem('powera.theme');
   if (savedTheme === 'light') { document.documentElement.dataset.theme = 'light'; $('theme').textContent = '☀'; }
-  $('token-input').value = token;
-  $('auth-form').addEventListener('submit', event => {
-    event.preventDefault();
-    token = $('token-input').value.trim();
-    if (token) sessionStorage.setItem('powera.token', token);
-    else sessionStorage.removeItem('powera.token');
-    toast('تم حفظ رمز PowerA للجلسة الحالية');
-    safeRefresh();
-  });
   $('room-form').addEventListener('submit', async event => {
     event.preventDefault();
     const form = event.currentTarget;

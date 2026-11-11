@@ -80,13 +80,10 @@
           <button class="button primary" type="submit">حفظ السعر</button>
           <p class="quiet">التكلفة التقديرية = استهلاك kWh × السعر المدخل. القراءات تأتي من الأجهزة، ولا تمثل فاتورة رسمية.</p>
         </form>
-        <form id="auth-form" class="card stack">
-          <h3>اتصال PowerA Hub</h3>
-          <label for="token-input">رمز الوصول (عند تشغيل اللوحة على الشبكة)</label>
-          <input id="token-input" type="password" autocomplete="off" placeholder="POWER_A_TOKEN">
-          <button type="submit" class="button muted">حفظ الرمز للجلسة الحالية</button>
-          <p class="quiet">يُحفظ الرمز داخل Session Storage للمتصفح فقط، ولا يتم تضمينه في رابط الصفحة.</p>
-        </form>
+        <div class="card stack">
+          <h3>الاتصال المحلي المباشر</h3>
+          <p class="quiet">PowerA يفتح مباشرة من غير حساب أو توكن. لازم الموبايل والـHub يكونوا على نفس شبكة Wi-Fi الموثوقة. أي جهاز على الشبكة المحلية ممكن يتحكم في الكهرباء؛ ممنوع فتح بورت الـHub للإنترنت.</p>
+        </div>
         <div class="card stack">
           <h3>معلومات النظام</h3>
           <p class="quiet">التحكم في المخارج يتم عبر طلب حالة صريحة مع تأكيد القراءة. لن يُعاد إرسال أمر مشكوك في نتيجته تلقائيًا.</p>

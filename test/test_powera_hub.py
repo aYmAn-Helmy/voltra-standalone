@@ -193,31 +193,35 @@ class PowerAHubTests(unittest.TestCase):
         with self.assertRaises(HubError):
             self.hub.set_alias("stock:" + MAC_STOCK, 0, "Bad\nName")
 
-    def test_web_routes_and_required_token(self):
+    def test_web_routes_local_without_token(self):
         class Handler(ApiHandler):
             pass
         Handler.hub = self.hub
         Handler.frontend = Path(__file__).resolve().parents[1] / "powera" / "web"
-        Handler.auth_token = "this-is-a-strong-testing-token"
         Handler.log_message = lambda *args: None
         server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
         t = threading.Thread(target=server.serve_forever, daemon=True)
         t.start()
         origin = "http://127.0.0.1:" + str(server.server_port)
         try:
-            with self.assertRaises(HTTPError) as unauthorized:
-                urlopen(origin + "/api/status", timeout=3)
-            self.assertEqual(unauthorized.exception.code, 401)
-            request = Request(origin + "/api/status", headers={"X-PowerA-Token": Handler.auth_token})
-            result = json.load(urlopen(request, timeout=3))
+            result = json.load(urlopen(origin + "/api/status", timeout=3))
+            health = json.load(urlopen(origin + "/api/health", timeout=3))
+            self.assertEqual(health["app"], "PowerA")
+            self.assertEqual(health["mode"], "lan")
             self.assertEqual(result["summary"]["devices"], 2)
             html = urlopen(origin + "/", timeout=3).read().decode()
             self.assertIn("PowerA", html)
             self.assertIn("Double", html) if False else None
             post = Request(origin + "/api/price", method="POST",
-                           headers={"X-PowerA-Token": Handler.auth_token, "Content-Type": "application/json"},
+                           headers={"X-PowerA-Client": "PowerA", "Content-Type": "application/json"},
                            data=b'{"pricePerKwh":2.7}')
             self.assertEqual(json.load(urlopen(post, timeout=3))["pricePerKwh"], 2.7)
+            denied = Request(origin + "/api/price", method="POST",
+                             headers={"Content-Type": "application/json"},
+                             data=b'{"pricePerKwh":1.0}')
+            with self.assertRaises(HTTPError) as error:
+                urlopen(denied, timeout=3)
+            self.assertEqual(error.exception.code, 403)
         finally:
             server.shutdown()
             server.server_close()

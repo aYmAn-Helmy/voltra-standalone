@@ -9,8 +9,7 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-import hmac
-import ipaddress
+ import ipaddress
 import json
 import os
 from pathlib import Path
@@ -471,11 +470,41 @@ class Hub:
 
 class ApiHandler(BaseHTTPRequestHandler):
     hub: Hub
-    auth_token: str = ""
     frontend: Path
 
-    def _authorized(self):
-        return not self.auth_token or hmac.compare_digest(self.headers.get("X-PowerA-Token", ""), self.auth_token)
+    def _allowed_lan(self):
+        """Unauthenticated local mode; never accept public or cross-subnet callers.
+
+        This is a network boundary, not a replacement for user authentication.
+        Keep this server behind a trusted LAN firewall.
+        """
+        try:
+            peer = ipaddress.ip_address(self.client_address[0])
+            local = ipaddress.ip_address(self.connection.getsockname()[0])
+            host = self.headers.get("Host", "")
+            if host.startswith("["):
+                return False
+            presented = ipaddress.ip_address(host.split(":")[0] if host != "localhost" else "127.0.0.1")
+            if peer.version != 4 or local.version != 4 or presented.version != 4:
+                return False
+            private = (ipaddress.ip_network("10.0.0.0/8"),
+                       ipaddress.ip_network("172.16.0.0/12"),
+                       ipaddress.ip_network("192.168.0.0/16"))
+            if peer.is_loopback and local.is_loopback:
+                return presented.is_loopback
+            if not (any(peer in r for r in private) and any(local in r for r in private)):
+                return False
+            return (peer in ipaddress.ip_network(str(local) + "/24", strict=False)
+                    and presented == local)
+        except (ValueError, IndexError, OSError):
+            return False
+
+    def _check_origin(self):
+        if self.headers.get("X-PowerA-Client") != "PowerA":
+            raise HubError("PowerA local client header required", 403)
+        origin = self.headers.get("Origin")
+        if origin and origin != "http://" + self.headers.get("Host", ""):
+            raise HubError("Cross-origin control is blocked", 403)
 
     def _json(self, obj, status=200):
         body = json.dumps(obj, ensure_ascii=False, allow_nan=False).encode("utf-8")
@@ -504,12 +533,12 @@ class ApiHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         try:
+            if not self._allowed_lan():
+                raise HubError("PowerA only accepts callers on the same trusted local subnet", 403)
             path = urlparse(self.path).path
             if path in ("/", "/index.html", "/app.js", "/style.css"):
                 self._asset("index.html" if path == "/" else path.lstrip("/"))
                 return
-            if not self._authorized():
-                raise HubError("Invalid PowerA API token", 401)
             params = parse_qs(urlparse(self.path).query)
             if path == "/api/status":
                 self._json(self.hub.refresh())
@@ -521,7 +550,7 @@ class ApiHandler(BaseHTTPRequestHandler):
                 self._json({"history": self.hub.history(params.get("deviceId", [""])[0],
                                       int(params.get("limit", ["100"])[0]))})
             elif path == "/api/health":
-                self._json({"ok": True})
+                self._json({"ok": True, "app": "PowerA", "apiVersion": 2, "mode": "lan"})
             else:
                 raise HubError("Not found", 404)
         except (HubError, ValueError, OSError) as exc:
@@ -529,8 +558,9 @@ class ApiHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         try:
-            if not self._authorized():
-                raise HubError("Invalid PowerA API token", 401)
+            if not self._allowed_lan():
+                raise HubError("PowerA only accepts callers on the same trusted local subnet", 403)
+            self._check_origin()
             if self.headers.get("Content-Type", "").split(";")[0].strip() != "application/json":
                 raise HubError("Expected application/json")
             size = int(self.headers.get("Content-Length", "0"))
@@ -568,23 +598,22 @@ def serve(argv=None):
     parser = argparse.ArgumentParser(description="PowerA multi-firmware local dashboard")
     parser.add_argument("--config", default="powera/config.example.json")
     parser.add_argument("--db", default="powera/data.sqlite3")
-    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8098)
     args = parser.parse_args(argv)
     try:
         with open(args.config, "r", encoding="utf-8") as file:
             cfg = json.load(file)
-        token = os.environ.get("POWERA_TOKEN", "")
-        if args.host not in ("127.0.0.1", "::1", "localhost") and len(token) < 20:
-            raise HubError("Set POWERA_TOKEN (at least 20 characters) before allowing LAN access")
+        if args.host not in ("0.0.0.0", "127.0.0.1"):
+            raise HubError("Use 0.0.0.0 for trusted-LAN use or 127.0.0.1 for local-only use")
         hub = Hub(cfg, db_path=args.db)
         class BoundHandler(ApiHandler):
             pass
         BoundHandler.hub = hub
-        BoundHandler.auth_token = token
         BoundHandler.frontend = Path(__file__).resolve().parent / "web"
         httpd = ThreadingHTTPServer((args.host, args.port), BoundHandler)
         print(f"PowerA Hub http://{args.host}:{args.port} | {len(hub.sources)} sources")
+        print("NO LOGIN / NO TOKEN — same-LAN /24 clients only. Do not port-forward or use untrusted Wi-Fi.")
         stop = threading.Event()
         def poll():
             while not stop.is_set():
