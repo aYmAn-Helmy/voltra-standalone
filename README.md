@@ -1,8 +1,8 @@
 # PowerA — Local Smart Power
 
 PowerA is an independently implemented unified dashboard and Android application
-for LG U+ / Jinheung **MTTL-W01**, covering both **Stock** (powerk controller)
-and **Standalone** firmware devices.
+for LG U+ / Jinheung **MTTL-W01**, covering both **Stock** (native TCP 10086
+receiver) and **Standalone** (direct HTTP) firmware devices.
 
 ## Stage 2 preview (no account, no token)
 
@@ -11,10 +11,11 @@ The Android application automatically scans the connected Wi-Fi subnet for
 PowerA Hub on port **8098**, and opens the same responsive web dashboard.
 You can enter the Hub IP manually if discovery is not supported by the router.
 
-**Important:** The native Android app does **not** run the stock MTTL controller
-by itself. A computer, Raspberry Pi or home server must run the PowerA Hub
-continuously, and original Stock strips still need a TCP controller such as
-upstream powerk.
+**Important:** Android is the controller UI; a computer, Raspberry Pi or
+always-on home server must run **PowerA Hub**. The Hub itself now includes the
+original-firmware **TCP 10086 receiver**; no separate powerk process is needed.
+Original stock strips **will not automatically appear through IP scanning**:
+each strip must first be provisioned to connect to the Hub computer's IP.
 
 ### 1. Run the Hub on a computer or Raspberry Pi
 
@@ -25,7 +26,7 @@ required for the scheduler). From the repository root:
 git clone --branch PowerA https://github.com/aYmAn-Helmy/voltra-standalone.git
 cd voltra-standalone
 cp powera/config.example.json powera/config.json
-# Set your local stock bridge IP in config.json if it differs from localhost.
+# Add Standalone devices by their real LAN IP + MAC if needed (see below).
 python3 -m powera.hub --config powera/config.json --db powera/data.sqlite3
 ```
 
@@ -33,9 +34,14 @@ The Hub defaults to listening on `0.0.0.0:8098` but **only accepts the same
 private IPv4 /24 subnet** and localhost. If using only a local browser, add
 `--host 127.0.0.1` instead.
 
-- Stock: run your original [powerk controller](https://github.com/ahmedtohamy1/powerk)
-  on the same server (by default `http://127.0.0.1:8080`) or set another
-  private IP in `config.json`.
+- **Stock (original firmware):** no powerk server is required. The new source
+  `{"id":"stock-native","type":"stock-native"}` enables the built-in TCP
+  receiver on **10086**. If your existing `powera/config.json` is from an
+  older release, **replace the old `stock-home` source with `stock-native`**,
+  keeping all Standalone sources intact. Stop any running `powerk.py serve`
+  process: only one process can listen on TCP 10086 on the same machine.
+- **One-time Stock pairing:** each original strip must be told the Hub's
+  **local IPv4 address**. Follow the [Arabic stock setup guide](docs/STOCK_PAIRING_AR.md).
 - Standalone: add a source with its **real IP and MAC address** to the list:
 
 ```json
@@ -49,6 +55,8 @@ private IPv4 /24 subnet** and localhost. If using only a local browser, add
 ```
 
 The MAC shown here is a placeholder; replace it with the real device MAC.
+The native stock receiver also accepts optional configured MAC allowlisting;
+this feature has not been physically tested on the original hardware.
 The device is verified by MAC before commands, blocking accidental control
 when the local DHCP server reassigns a remembered address.
 
@@ -72,6 +80,9 @@ upstream submodule as a derivative without obtaining the author's permission.
 
 ### 3. Features implemented now
 
+- Native original Stock TCP (10086) reception: parse boot/getinfo, per-outlet
+  watts/energy, connection/online status, verified relay read-back and optional
+  one-time SoftAP provisioning. No separate Stock HTTP bridge needed.
 - Mixed Stock and Standalone cards, independently controlled four-outlet
   switches, whole-strip ON/OFF and all-online-strips ON/OFF.
 - Double-tap guard with 3-second window for every power-changing web button.
@@ -92,9 +103,10 @@ upstream submodule as a derivative without obtaining the author's permission.
 This is a preview. It has **no login, no token and no account sharing** at the
 user's request. Anyone connected to the same trusted LAN subnet can potentially
 control your electricity. **Use only trusted private Wi-Fi. Do not open Hub
-port 8098, upstream port 8080 or device TCP port 10086 to the internet.**
-The Hub also rejects public IPs, cross-subnet clients, and nonlocal HTTP Host
-headers. These measures reduce exposure but are **not user authentication**.
+ports **8098 and 10086** (and any optional legacy Stock HTTP bridge)
+to the internet.**
+The Hub web API rejects cross-subnet clients and nonlocal HTTP Host headers.
+The TCP listener accepts only private/loopback IPv4 peers. These measures reduce exposure but are **not user authentication**.
 
 Timers/schedules run on the Hub, not the firmware. If the Hub is offline at a
 scheduled minute or a restore timer expires long before reconnection, the Hub
@@ -113,6 +125,7 @@ types still need real-hardware acceptance testing.
 
 ```bash
 python3 -m unittest discover -s test -p 'test_powera_*.py' -v
+# Includes OEM TCP handshake / readback simulator (no physical device required)
 python3 -m unittest discover -s test -p 'test_branding.py' -v
 node --check powera/web/app.js
 ```
@@ -121,9 +134,9 @@ See [the implementation status for every requested capability](docs/POWER_A_REQU
 
 ## Open-source upstream references and attribution
 
-We use the documented JSON API of
-[ahmedtohamy1/powerk](https://github.com/ahmedtohamy1/powerk) and documented
-Standalone API of
+We implement the publicly documented OEM line-oriented TCP protocol
+described in [ahmedtohamy1/powerk](https://github.com/ahmedtohamy1/powerk),
+and the Standalone HTTP API documented in
 [af950833/mttl_w01_standalone](https://github.com/af950833/mttl_w01_standalone).
 The former repository is pinned under `upstream/powerk` as a **Git submodule**
 rather than copying its source into PowerA. The original upstream project did

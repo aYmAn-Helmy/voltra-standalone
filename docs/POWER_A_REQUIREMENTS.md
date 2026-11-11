@@ -9,11 +9,11 @@ This is the user's feature backlog transcribed into engineering acceptance crite
 
 | # | Requirement | Status | Details |
 | --- | --- | --- | --- |
-| D1 | Individual ON/OFF for all 4 outlets | ✅ Hub/Web | Stock documented JSON API and Standalone verified HTTP |
+| D1 | Individual ON/OFF for all 4 outlets | ✅ Hub/Web | Native Stock TCP 10086 or legacy bridge, plus Standalone HTTP (physical verification pending) |
 | D2 | Whole power strip ON/OFF | ✅ Hub/Web | Explicit confirmation |
 | D3 | All strips ON/OFF | ✅ Hub/Web | Online strips only; partial failures reported; no rollback |
 | D4 | Per-outlet ON/OFF state | ✅ Hub/Web | Unknown state never shown as OFF |
-| D5 | Online/offline | ✅ Hub/Web | Connection polling; offline cache |
+| D5 | Online/offline | ✅ Hub/Web | Native Stock TCP connect/disconnect; Standalone polls and offline cache |
 | D6 | Rename strip | 🟡 Partial | Local PowerA display alias only; no firmware rename |
 | D7 | Rename outlet | 🟡 Partial | Local PowerA display alias only |
 | D8 | Android control | ✅ Phase 2 Preview | Original Android shell autodiscovers and embeds the unified Hub web UI |
