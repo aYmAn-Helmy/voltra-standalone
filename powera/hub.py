@@ -176,7 +176,12 @@ class Hub:
             if not isinstance(s, dict) or s.get("type") not in ("stock", "stock-native", "standalone") or not ID_PATTERN.fullmatch(str(s.get("id", ""))):
                 raise HubError("Invalid source configuration")
             source = dict(s)
-            if source["type"] != "stock-native":
+            if source["type"] == "stock-native":
+                allow = source.get("allowedMacs", [])
+                if not isinstance(allow, list) or len(allow) > 50:
+                    raise HubError("Native Stock allowedMacs must be a list of up to 50 MACs")
+                source["allowedMacs"] = [mac_id(x) for x in allow]
+            else:
                 source["url"] = private_url(str(source.get("url", "")))
             if source["type"] == "standalone":
                 source["mac"] = mac_id(source.get("mac", ""))
@@ -644,8 +649,12 @@ def serve(argv=None):
         hub = Hub(cfg, db_path=args.db)
         # Stock strips call *into* this listener. They are not discovered by
         # Wi-Fi HTTP scans; their stored server IP must point to this machine.
-        if any(s["type"] == "stock-native" for s in hub.sources):
-            hub.stock_bridge = StockBridge(host=args.host, port=10086)
+        native_sources = [s for s in hub.sources if s["type"] == "stock-native"]
+        if len(native_sources) > 1:
+            raise HubError("Configure only one native Stock listener source")
+        if native_sources:
+            hub.stock_bridge = StockBridge(host=args.host, port=10086,
+                                            allowed_macs=native_sources[0]["allowedMacs"])
             try:
                 hub.stock_bridge.start()
             except OSError as exc:

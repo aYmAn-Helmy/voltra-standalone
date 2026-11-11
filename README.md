@@ -55,8 +55,10 @@ private IPv4 /24 subnet** and localhost. If using only a local browser, add
 ```
 
 The MAC shown here is a placeholder; replace it with the real device MAC.
-The native stock receiver also accepts optional configured MAC allowlisting;
-this feature has not been physically tested on the original hardware.
+You may optionally set `"allowedMacs": ["AA:BB:CC:DD:EE:FF"]` on the
+`stock-native` source. A blank/missing list accepts all original-firmware
+strips on the trusted LAN. MAC allowlisting is only a basic device filter,
+**not strong authentication**, because MAC identifiers can be spoofed.
 The device is verified by MAC before commands, blocking accidental control
 when the local DHCP server reassigns a remembered address.
 
