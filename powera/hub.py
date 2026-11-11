@@ -20,9 +20,7 @@ import threading
 import time
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse, parse_qs
-from urllib.request import Request, build_opener, HTTPHandler
-from zoneinfo import ZoneInfo
-
+from urllib.request import Request, build_opener
 
 MAC_PATTERN = re.compile(r"^[0-9A-F]{12}$")
 ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{1,45}$")
@@ -58,10 +56,7 @@ def private_url(value: str) -> str:
     return value.rstrip("/")
 
 
-class NoRedirectHandler(HTTPHandler):
-    """Marker: use a dedicated no-redirect handler via urllib.request."""
-
-from urllib.request import HTTPRedirectHandler
+from urllib.request import HTTPRedirectHandler, ProxyHandler
 
 
 class RejectRedirect(HTTPRedirectHandler):
@@ -81,7 +76,7 @@ def _request(origin: str, path: str, *, method: str = "GET",
         headers["Content-Type"] = content_type
     req = Request(origin + path, data=body, headers=headers, method=method)
     try:
-        with build_opener(RejectRedirect()).open(req, timeout=timeout) as response:
+        with build_opener(ProxyHandler({}), RejectRedirect()).open(req, timeout=timeout) as response:
             raw = response.read(256 * 1024 + 1)
             if len(raw) > 256 * 1024:
                 raise HubError("Oversized device response", 502)
@@ -121,13 +116,20 @@ def stock_device(source: dict, raw: dict) -> dict:
             "temperatureC": reading(o.get("temp_c")),
             "currentA": None,
         })
+    if raw.get("online") is not True:
+        # A cached upstream stock report is not current relay or wattage data.
+        for outlet in outlets:
+            outlet["on"] = None
+            outlet["powerW"] = None
     return {
         "id": "stock:" + mac, "mac": mac, "type": "stock", "source": source["id"],
         "name": raw.get("name") or f"MTTL {mac[-6:]}",
         "online": raw.get("online") is True, "controlAvailable": raw.get("online") is True,
         "firmware": raw.get("fw"), "rssi": raw.get("rssi"),
-        "voltageV": reading(raw.get("voltage")), "currentA": reading(raw.get("current_a")),
-        "powerW": reading(raw.get("power_w")), "energyKwh": reading(raw.get("energy_kwh")),
+        "voltageV": reading(raw.get("voltage")) if raw.get("online") is True else None,
+        "currentA": reading(raw.get("current_a")) if raw.get("online") is True else None,
+        "powerW": reading(raw.get("power_w")) if raw.get("online") is True else None,
+        "energyKwh": reading(raw.get("energy_kwh")),
         "outlets": outlets,
     }
 
@@ -248,7 +250,9 @@ class Hub:
                     if item["source"] == source["id"] and did not in found:
                         prev = dict(item)
                         prev["online"] = prev["controlAvailable"] = False
-                        prev["outlets"] = [{**o, "on": None} for o in item["outlets"]]
+                        prev["powerW"] = prev["voltageV"] = prev["currentA"] = None
+                        prev["outlets"] = [{**o, "on": None, "powerW": None, "currentA": None}
+                                           for o in item["outlets"]]
                         found[did] = prev
                 if source["type"] == "standalone" and ("standalone:" + source["mac"]) not in found:
                     did = "standalone:" + source["mac"]

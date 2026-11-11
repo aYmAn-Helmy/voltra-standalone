@@ -131,6 +131,23 @@ class PowerAHubTests(unittest.TestCase):
         self.assertEqual([x for x in self.transport.writes if x[0] == STAND_ORIGIN][-1][2], b"\x02\x01")
         self.assertEqual(len([x for x in self.transport.writes if x[0] == STAND_ORIGIN]), 2)
 
+    def test_offline_metering_never_looks_live(self):
+        self.hub.refresh(force=True)
+        self.transport.fail_standalone = True
+        values = self.hub.refresh(force=True)["devices"]
+        standalone = next(x for x in values if x["type"] == "standalone")
+        self.assertFalse(standalone["online"])
+        self.assertIsNone(standalone["powerW"])
+        self.assertIsNone(standalone["voltageV"])
+        self.assertTrue(all(o["powerW"] is None and o["on"] is None for o in standalone["outlets"]))
+        self.transport.fail_stock = False
+        self.transport.stock[0]["online"] = False
+        values = self.hub.refresh(force=True)["devices"]
+        stock = next(x for x in values if x["type"] == "stock")
+        self.assertFalse(stock["online"])
+        self.assertIsNone(stock["powerW"])
+        self.assertTrue(all(o["powerW"] is None and o["on"] is None for o in stock["outlets"]))
+
     def test_whole_network_command_requires_confirmation(self):
         self.hub.refresh(force=True)
         with self.assertRaises(HubError):
