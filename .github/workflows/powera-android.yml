@@ -10,6 +10,8 @@ on:
       - 'test/test_powera_scheduler.py'
       - 'test/powera-web.test.mjs'
       - 'powera/scheduler.py'
+      - 'powera/stock_bridge.py'
+      - 'test/test_powera_stock.py'
       - '.github/workflows/powera-android.yml'
   workflow_dispatch:
 permissions:
@@ -32,7 +34,7 @@ jobs:
         run: node --test test/powera-web.test.mjs
       - name: Verify PowerA Hub code and web frontend
         run: |
-          python3 -m py_compile powera/hub.py powera/scheduler.py
+          python3 -m py_compile powera/hub.py powera/scheduler.py powera/stock_bridge.py
           node --check powera/web/app.js
           python3 -m unittest discover -s test -p 'test_powera_*.py' -v
       - name: Install Android SDK 35

@@ -159,3 +159,7 @@ html[data-theme=light] .notification.unread{background:#eef7ff}
 .schedule-actions{display:flex;gap:8px;flex-wrap:wrap}
 .outlet-timer{width:100%;margin-top:9px;min-height:32px;font-size:10px!important;padding:5px 4px}
 @media(max-width:700px){.schedule-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.schedule-grid .wide{grid-column:span 2}.smart-timeline{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
+.stock-hint{border:1px solid #94713d;background:#32291d;color:#ffe4b3;border-radius:14px;padding:12px 15px;margin:0 0 16px;font-size:12px;line-height:1.8}
+.stock-hint[hidden]{display:none}
+html[data-theme=light] .stock-hint{background:#fff3dc;color:#704c0b;border-color:#d8af68}

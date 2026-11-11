@@ -299,6 +299,21 @@
     $('outlets-on').textContent = String(s.outletsOn ?? 0);
     $('power-total').textContent = number(s.powerW) + ' W';
     $('price-total').textContent = number(data.pricePerKwh, 2);
+    const receiver = data.stockReceiver;
+    const hint = $('stock-hint');
+    if (receiver && !receiver.enabled) {
+      hint.hidden = false;
+      hint.textContent = 'دعم المشتركات الرسمية مش مفعّل في إعدادات Hub. أضف مصدر type: stock-native إلى powera/config.json وأعد تشغيل السيرفر.';
+    } else if (receiver && receiver.enabled && !receiver.listening) {
+      hint.hidden = false;
+      hint.textContent = 'مستقبل المشتركات الرسمية TCP 10086 غير شغّال؛ راجع سجل تشغيل PowerA Hub.';
+    } else if (receiver && receiver.enabled && receiver.connected === 0) {
+      hint.hidden = false;
+      hint.textContent = 'مستقبل المشتركات الرسمية شغّال على TCP 10086، لكن مفيش مشترك متصل. لازم توجّه المشترك الرسمي إلى IP جهاز PowerA Hub من وضع الإعداد (SoftAP).';
+    } else {
+      hint.hidden = true;
+      hint.textContent = '';
+    }
     $('connection').classList.toggle('connected', (s.online || 0) > 0);
     $('connection').lastChild.textContent = (s.online || 0) > 0 ? 'متصل بـ ' + s.online + ' مشترك' : 'لا توجد مشتركات متصلة';
 

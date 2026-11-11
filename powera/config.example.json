@@ -1,11 +1,9 @@
 {
   "sources": [
     {
-      "id": "stock-home",
-      "type": "stock",
-      "name": "مشتركات الفيرموير الأصلي",
-      "url": "http://127.0.0.1:8080",
-      "token": ""
+      "id": "stock-native",
+      "type": "stock-native",
+      "name": "المشتركات الرسمية (TCP 10086)"
     }
   ]
 }
