@@ -1,155 +1,135 @@
-# PowerA
+# PowerA — Local Smart Power
 
-**PowerA** is the dedicated development branch for customizing an Android controller for LG U+ / Jinheung MTTL-W01 smart power strips.
+PowerA is an independently implemented unified dashboard and Android application
+for LG U+ / Jinheung **MTTL-W01**, covering both **Stock** (powerk controller)
+and **Standalone** firmware devices.
 
-## PowerA Hub — first integrated web preview
+## Stage 2 preview (no account, no token)
 
-An **original, independently authored** local Hub has been added in
-\`powera/hub.py\`. It uses the documented upstream powerk JSON protocol for
-stock devices and the documented Standalone HTTP API for custom firmware.
+PowerA starts directly: **no login screen, no access token, no cloud**.
+The Android application automatically scans the connected Wi-Fi subnet for
+PowerA Hub on port **8098**, and opens the same responsive web dashboard.
+You can enter the Hub IP manually if discovery is not supported by the router.
 
-**This is not yet integrated into the upstream Kotlin APK**, and it does not
-implement the full feature roadmap. See
-[the 63-feature requirements matrix](docs/POWER_A_REQUIREMENTS.md) for exact
-scope and implementation status.
+**Important:** The native Android app does **not** run the stock MTTL controller
+by itself. A computer, Raspberry Pi or home server must run the PowerA Hub
+continuously, and original Stock strips still need a TCP controller such as
+upstream powerk.
 
-### First run
+### 1. Run the Hub on a computer or Raspberry Pi
 
-Start the **original** powerk controller separately for stock firmware strips
-(if you have any). Then configure PowerA sources. A copy of the provided
-config example is recommended so that you can keep credentials private.
+Python 3.10+ recommended (IANA tzdata package / system timezone database is
+required for the scheduler). From the repository root:
 
 \`\`\`bash
+git clone --branch PowerA https://github.com/aYmAn-Helmy/voltra-standalone.git
+cd voltra-standalone
 cp powera/config.example.json powera/config.json
-# Edit powera/config.json: stock server URL(s), and optionally Standalone
-# firmware IP + MAC (see the example below).
+# Set your local stock bridge IP in config.json if it differs from localhost.
 python3 -m powera.hub --config powera/config.json --db powera/data.sqlite3
-# Web UI: http://127.0.0.1:8098
 \`\`\`
 
-For an additional Standalone device, add an entry to the
-\`sources\` list (replace the IP and MAC with **real** values):
+The Hub defaults to listening on \`0.0.0.0:8098\` but **only accepts the same
+private IPv4 /24 subnet** and localhost. If using only a local browser, add
+\`--host 127.0.0.1\` instead.
+
+- Stock: run your original [powerk controller](https://github.com/ahmedtohamy1/powerk)
+  on the same server (by default \`http://127.0.0.1:8080\`) or set another
+  private IP in \`config.json\`.
+- Standalone: add a source with its **real IP and MAC address** to the list:
 
 \`\`\`json
-{"id":"standalone-office","type":"standalone","name":"مكتب","url":"http://192.168.0.55","mac":"00:11:22:33:44:55"}
+{
+  "id": "standalone-office",
+  "type": "standalone",
+  "name": "مكتب",
+  "url": "http://192.168.0.55",
+  "mac": "00:11:22:33:44:55"
+}
 \`\`\`
 
-The MAC is pinned: an IP reassignment cannot cause commands to be sent to a
-different physical strip. A mismatched or unreachable device stays offline.
+The MAC shown here is a placeholder; replace it with the real device MAC.
+The device is verified by MAC before commands, blocking accidental control
+when the local DHCP server reassigns a remembered address.
 
-### LAN access
+### 2. Open on Android or web
 
-By default the web UI binds **only to 127.0.0.1**. To open it from a phone
-connected to the same trusted LAN, choose a long token and explicitly bind the
-server to the LAN:
+Open \`http://<YOUR-HUB-IP>:8098\` in a browser on the same Wi-Fi, or install
+the preview Android APK from [PowerA Releases](https://github.com/aYmAn-Helmy/voltra-standalone/releases/tag/powera-preview-v0.3.0).
+Android 8.0+ is supported. The app discovers the Hub automatically in
+the **same /24 Wi-Fi segment**; type its IP on the welcome screen if needed.
+
+The new Android app is original source in \`powera/android\`, independent of the
+external Kotlin powerk app, and is built using Java 17 / Android SDK 35:
 
 \`\`\`bash
-POWERA_TOKEN='a-long-random-unique-secret-please' python3 -m powera.hub \\
-  --config powera/config.json --db powera/data.sqlite3 --host 0.0.0.0 --port 8098
+gradle -p powera/android :app:assembleDebug
 \`\`\`
 
-Browse \`http://<SERVER-IP>:8098\` from the phone, go to **Settings** and
-enter the same token. The token persists only in the current browser tab's
-session storage. The upstream stock controller still needs its separate
-\`X-Token\` if configured, added per source in \`powera/config.json\`.
-Neither this preview nor the stock/Standalone device protocols provides
-end-to-end encrypted transport; use a trusted local network, or a private VPN
-with HTTPS termination for remote use. **Never port-forward these servers
-directly onto the internet.**
+This creates \`powera/android/app/build/outputs/apk/debug/app-debug.apk\`.
+GitHub Actions builds a preview APK automatically. Do not distribute the older
+upstream submodule as a derivative without obtaining the author's permission.
 
-### Implemented in the current Hub + web preview
+### 3. Features implemented now
 
-- Unified stock/Standalone cards, identity validation, online/offline states.
-- All four outlets and whole-strip commands, plus all-online-strips control.
-- Double-tap guard for every web power button; explicit confirmation for
-  all-outlet, all-strip and room operations.
-- Confirmed stock commands and Standalone relay read-back; **never retry**
-  an uncertain power command automatically.
-- Local device/outlet display names (do not rewrite firmware names).
-- Cross-strip rooms, room member assignment and room power controls.
-- Current W, cumulative kWh, temperature, voltage/current if available.
-- Price input in EGP/kWh and simple estimated cumulative cost.
-- 30-day *sample-based* local readings storage (no fabricated backfilled data).
-- Connection lost/restored inbox and read/unread state.
-- Dark/light web appearance; Arabic and right-to-left layout.
+- Mixed Stock and Standalone cards, independently controlled four-outlet
+  switches, whole-strip ON/OFF and all-online-strips ON/OFF.
+- Double-tap guard with 3-second window for every power-changing web button.
+- Cross-strip rooms, room controls, local names, saved favorites and filters.
+- Live sampled watts, cumulative kWh, cost approximation in EGP, per-outlet
+  comparison bars and historical SVG energy/power charts.
+- **One-time and weekly ON/OFF scheduling**, IANA timezone-aware. Choose days
+  and choose an hour using a quick visual Smart Timer or precise time input.
+- **Return timer:** change a plug temporarily and attempt to restore its
+  original state after 1–1440 minutes; only restore if the physical state still
+  matches the expected state.
+- Notifications for disconnections, reconnections and automation execution,
+  with a read/unread inbox.
+- Arabic RTL layout, responsive mobile UI, dark/light mode.
 
-### Deliberately not yet implemented
+### 4. Important limitations / safety
 
-Android PowerA Hub integration, cloud accounts/SSO, household sharing,
-advanced schedules, protection rules/alarms, push notifications, Siri/iOS widgets,
-firmware power-on recovery settings, and production release signing. Some rely
-on firmware or a dedicated iOS client. The 25-second background sample
-and 15-second web refresh are polling, **not real-time event delivery**.
+This is a preview. It has **no login, no token and no account sharing** at the
+user's request. Anyone connected to the same trusted LAN subnet can potentially
+control your electricity. **Use only trusted private Wi-Fi. Do not open Hub
+port 8098, upstream port 8080 or device TCP port 10086 to the internet.**
+The Hub also rejects public IPs, cross-subnet clients, and nonlocal HTTP Host
+headers. These measures reduce exposure but are **not user authentication**.
 
-### Verification
+Timers/schedules run on the Hub, not the firmware. If the Hub is offline at a
+scheduled minute or a restore timer expires long before reconnection, the Hub
+will **skip that action**, record it in the inbox, and not reissue an uncertain
+switch command. Schedule writes are claimed in SQLite *before* execution so a
+crash does not cause duplicate execution. Missed rule execution cannot be
+replayed, and Hub-based schedules are **not reliable safety devices**.
+
+Automatic overvoltage, undervoltage, overcurrent protection and power-on
+recovery are firmware/hardware-specific; they are **not implemented** by this
+preview. Email/phone login, Google/Apple ID, cloud sharing, iPhone widgets,
+energy-based automation rules and English UI are deferred. Both firmware
+types still need real-hardware acceptance testing.
+
+### 5. Run verification
 
 \`\`\`bash
-python3 -m unittest discover -s test -p 'test_powera_hub.py' -v
+python3 -m unittest discover -s test -p 'test_powera_*.py' -v
+python3 -m unittest discover -s test -p 'test_branding.py' -v
 node --check powera/web/app.js
 \`\`\`
 
-The CI also checks the existing PowerA app-name overlay.
+See [the implementation status for every requested capability](docs/POWER_A_REQUIREMENTS.md).
 
----
+## Open-source upstream references and attribution
 
-## Upstream reference
+We use the documented JSON API of
+[ahmedtohamy1/powerk](https://github.com/ahmedtohamy1/powerk) and documented
+Standalone API of
+[af950833/mttl_w01_standalone](https://github.com/af950833/mttl_w01_standalone).
+The former repository is pinned under \`upstream/powerk\` as a **Git submodule**
+rather than copying its source into PowerA. The original upstream project did
+not publish a clear redistribution license when checked on 2026-11-11; obtain
+permission before distributing modified copies of its app. PowerA's own Hub,
+web frontend and Android launcher are original, separate implementations.
 
-Based on the architecture and documented interfaces of [ahmedtohamy1/powerk](https://github.com/ahmedtohamy1/powerk), a Python controller + Kotlin/Jetpack Compose Android client. The upstream project is linked as a **Git submodule** in `upstream/powerk`, preserving its original source, history, authorship and update path.
-
-This branch is separate from Voltra's `main` and `feat/central-dashboard` branches, so the two initiatives can evolve independently.
-
-### Get the project
-
-```bash
-git clone --branch PowerA --recurse-submodules https://github.com/aYmAn-Helmy/voltra-standalone.git
-cd voltra-standalone
-# If it was cloned without submodules:
-git submodule update --init --recursive
-```
-
-### Build the PowerA-branded Android application
-
-Our overlay changes the Android launcher label **and the in-app title** (both Arabic
-and English `app_name` resources) to **PowerA**. It also changes the Gradle
-project name to `PowerA` and sets a separate Android application ID
-`com.powera.app` so it can be installed alongside the original.
-
-```bash
-git clone --branch PowerA --recurse-submodules https://github.com/aYmAn-Helmy/voltra-standalone.git
-cd voltra-standalone
-bash scripts/build_powera.sh
-```
-
-APK output: `upstream/powerk/android/app/build/outputs/apk/debug/app-debug.apk`.
-To prepare without building, run `python3 scripts/brand_powera.py`. To verify
-the renamed state, run `python3 scripts/brand_powera.py --check`.
-
-The upstream source remains an external submodule and this script modifies only
-your **local working checkout**. The original Kotlin package is deliberately
-unchanged; it does not affect the visible PowerA name.
-
-**Licensing:** The upstream project did not provide a clear redistribution
-license when checked. This branch does not republish the upstream source or
-a rebranded APK. Obtain permission before distributing a derivative.
-
-### Project identity
-
-- **New project / workstream name:** PowerA
-- **Development branch:** `PowerA`
-- **Upstream implementation:** powerk, under `upstream/powerk`, unmodified
-- **PowerA branding overlay:** display name `PowerA` and application ID `com.powera.app` (applied during local build)
-
-### License and reuse status
-
-**Important:** As checked on 2026-11-11, the upstream powerk repository did not publish a `LICENSE` file or GitHub-recognized license. A public repository can be inspected and linked, but this does **not automatically permit** copying, republishing, renaming and distributing its entire source or APK under another brand. We therefore intentionally keep it as an external Git submodule rather than committing a modified copy as PowerA.
-
-Obtain an explicit license or written permission from the upstream owner before publishing a derivative application or copied source under PowerA. Development can proceed on original implementation and documented protocol integration in this branch.
-
-## Next development targets
-
-1. Verify the renamed PowerA APK on Android and clarify distribution permission.
-2. Integrate the stock MTTL-W01 protocol using authorized interfaces, or interface with the upstream powerk JSON API.
-3. Optionally add Standalone firmware HTTP/SSE support alongside the stock controller.
-4. Add automated tests and a distributable APK once redistribution rights and signing are settled.
-
-For the upstream setup, provisioning steps and API documentation, see [the original Arabic README](https://github.com/ahmedtohamy1/powerk/blob/master/README.ar.md).
+The earlier upstream-name overlay remains in \`scripts/\` for reference;
+**the app now built/released from \`powera/android\` is the supported PowerA app**.

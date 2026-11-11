@@ -4,3 +4,6 @@ powera/*.sqlite3
 powera/*.sqlite3-*
 __pycache__/
 *.py[cod]
+powera/android/.gradle/
+powera/android/**/build/
+powera/dist/

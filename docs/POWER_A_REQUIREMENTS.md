@@ -3,8 +3,7 @@
 This is the user's feature backlog transcribed into engineering acceptance criteria.
 **Status:** ✅ Hub/Web now = implemented in the original PowerA Hub/web preview,
 🟡 Partial = requires more work, ⏳ Planned = not implemented,
-⚠️ Depends = blocked by device firmware/platform/provider support. The
-original Kotlin **powerk APK is not connected to the new Hub yet**.
+⚠️ Depends = blocked by device firmware/platform/provider support. An independently authored **PowerA Android APK now discovers and embeds the Hub**. The upstream Kotlin powerk app is linked but not redistributed.
 
 ## 1 — Device control (10)
 
@@ -17,7 +16,7 @@ original Kotlin **powerk APK is not connected to the new Hub yet**.
 | D5 | Online/offline | ✅ Hub/Web | Connection polling; offline cache |
 | D6 | Rename strip | 🟡 Partial | Local PowerA display alias only; no firmware rename |
 | D7 | Rename outlet | 🟡 Partial | Local PowerA display alias only |
-| D8 | Android control | 🟡 Partial | Existing upstream APK uses stock API only; Hub integration pending |
+| D8 | Android control | ✅ Phase 2 Preview | Original Android shell autodiscovers and embeds the unified Hub web UI |
 | D9 | Web dashboard | ✅ Hub/Web | Branded Arabic responsive page |
 | D10 | Double-Tap Guard | ✅ Hub/Web | 3-second confirm window for web power controls |
 
@@ -25,18 +24,16 @@ original Kotlin **powerk APK is not connected to the new Hub yet**.
 
 | # | Requirement | Status | Notes |
 | --- | --- | --- | --- |
-| T1 | Scheduled ON | ⏳ Planned | Persistent scheduler/command audit |
-| T2 | Scheduled OFF | ⏳ Planned | Ditto |
-| T3 | One-shot scheduling | ⏳ Planned | Idempotence across reboot |
-| T4 | Weekly recurring scheduling | ⏳ Planned | Recurrence and missed-run rules |
-| T5 | Visual Smart Timer | ⏳ Planned | Timeline editor |
-| T6 | Return to original outlet state after duration | ⏳ Planned | Snapshot/restore, don't override physical changes without policy |
+| T1 | Scheduled ON | ✅ Hub/Web | Durable SQLite schedule with verified relay command |
+| T2 | Scheduled OFF | ✅ Hub/Web | Same verified control pathway |
+| T3 | One-shot scheduling | ✅ Hub/Web | Claim before send, never replay after crash |
+| T4 | Weekly recurring scheduling | ✅ Hub/Web | Per-weekday recurrence, late events skipped |
+| T5 | Visual Smart Timer | 🟡 Partial | Selectable two-hour timeline plus exact time/day editor |
+| T6 | Return to original outlet state after duration | ✅ Hub/Web | Guarded restore; missed timer or changed state requires manual review |
 | T7 | Usage-based automation | ⏳ Planned | Verified fresh telemetry, hysteresis and audit |
-| T8 | Time zone-aware execution | ⏳ Planned | IANA zone ID and DST policy |
+| T8 | Time zone-aware execution | ✅ Hub/Web | IANA timezone, DST gap skipped and fold=0 |
 
-Standalone firmware itself supports up to eight on-device schedules and
-per-channel timers, but PowerA does not yet configure them. Stock firmware
-features differ.
+The new Hub scheduler is **server-based**, not stored in firmware. The Hub must stay online: a missed deadline will not replay after a crash, blackout or network outage. Stock and Standalone device-native scheduling features differ. No firmware-level safety claim is implied.
 
 ## 3 — Energy monitoring (8)
 
@@ -45,8 +42,8 @@ features differ.
 | E1 | Watt per outlet | ✅ Hub/Web | When supplied by device |
 | E2 | Total strip wattage | ✅ Hub/Web | Device readings |
 | E3 | kWh | ✅ Hub/Web | Cumulative counter when present |
-| E4 | History | 🟡 Partial | Local polling snapshots up to 30 days; no chart/export yet |
-| E5 | Outlet comparison | 🟡 Partial | Four tiles side by side, advanced comparison pending |
+| E4 | History | ✅ Hub/Web | Local polling snapshots up to 30 days and per-outlet SVG trend chart; export pending |
+| E5 | Outlet comparison | ✅ Hub/Web | Visual wattage bars per outlet |
 | E6 | kWh rate | ✅ Hub/Web | Local EGP price setting |
 | E7 | Estimated cost | ✅ Hub/Web | Counter × price; not a bill; missing readings unknown |
 | E8 | Voltage and current | ✅ Hub/Web | Only if supplied |
@@ -85,7 +82,7 @@ relay. Use appropriate breakers/RCD and rated hardware protection.
 | N1 | Device disconnected | ✅ Hub/Web | Poll-detected only |
 | N2 | Device reconnected | ✅ Hub/Web | Poll-detected only |
 | N3 | Electrical fault | ⏳ Planned | Verified firmware warning states |
-| N4 | Automation executed | ⏳ Planned | Requires scheduler |
+| N4 | Automation executed | ✅ Hub/Web | Scheduled-action and return-timer results in inbox |
 | N5 | Physical button change | ⏳ Planned | Need event origin; polling alone can't prove origin |
 | N6 | Notification inbox | ✅ Hub/Web | Local 100 newest |
 | N7 | Read/unread | ✅ Hub/Web | Local SQLite |
@@ -100,9 +97,9 @@ relay. Use appropriate breakers/RCD and rated hardware protection.
 | A4 | RTL | ✅ Hub/Web | Arabic RTL |
 | A5 | Dark/light | ✅ Hub/Web | Local preference |
 | A6 | User profile | ⏳ Planned | Database/account model |
-| A7 | Logout/session management | 🟡 Partial | Hub browser-tab token only; no accounts |
+| A7 | Logout/session management | ⏳ Deferred | Accounts intentionally postponed; no token or login |
 | A8 | Delete account | ⏳ Planned | Requires accounts, retention and deletion policy |
-| A9 | Secure session storage | 🟡 Partial | Browser session token; proper OAuth session design later |
+| A9 | Secure session storage | ⏳ Deferred | No login, credentials or sessions in LAN-only preview |
 | A10 | Provision Wi-Fi | ⚠️ Depends | Upstream stock provision and Standalone setup exist separately; not in Hub |
 | A11 | iPhone home screen widget | ⚠️ Depends | Requires separate iOS app and WidgetKit |
 
@@ -125,12 +122,9 @@ physical validation and explicit user consent.
 
 1. **P0 – Hub integration**: Stock + Standalone normalized with unit tests,
    identity verification, safe control and failure reporting. ✅ Prototype.
-2. **P1 – Android & richer UI**: Independently licensed app integrated to Hub,
-   rooms, verified commands, persistent favorites, energy charts, localization.
-3. **P2 – Scheduler/alerts**: Durable timed jobs, IANA time zones, idempotent
-   execution, energy-triggered rules and notification events.
-4. **P3 – Accounts/family**: Provider-backed identities, per-device ACLs,
-   invitation lifecycle, credential storage, audit and account deletion.
+2. **P1 – Android & richer UI**: Original Android Hub client, rooms, verified commands, saved favorites and energy charts. ✅ Preview. English localization planned.
+3. **P2 – Scheduler/alerts**: Durable once/weekly jobs, IANA zones, reversible timers and execution inbox implemented in local Hub. Energy-based rules and push notifications pending.
+4. **P3 – Accounts/family**: Deferred by project request. No sign-in/token/sharing in this preview.
 5. **P4 – Firmware and iOS**: Distinct verified support for recovery modes,
    firmware protection settings, native phone notifications and iOS WidgetKit.
 
@@ -142,7 +136,7 @@ physical validation and explicit user consent.
 - Bulk/room controls return per-target results and never assume atomicity.
 - Confirm actions with power impact, especially after a blackout.
 - Treat missing/stale telemetry as unknown rather than zero.
-- Network exposure needs strong authentication and transport protection.
+- **Temporary unauthenticated LAN mode**: same private IPv4 /24 only, numeric Host checks and same-origin write guard. Anyone on that subnet can control the strips; never use public/guest Wi-Fi or expose through port forwarding. Future production build requires authentication and transport protection.
 - Authorization checks must happen on the API, not only through UI buttons.
 - Avoid remote firmware updates until checksum/identity/physical test gates pass.
 - Physical testing on both firmware types is needed before release.

@@ -7,6 +7,8 @@ on:
       - 'powera/hub.py'
       - 'powera/web/**'
       - 'test/test_powera_hub.py'
+      - 'test/test_powera_scheduler.py'
+      - 'powera/scheduler.py'
       - '.github/workflows/powera-android.yml'
   workflow_dispatch:
 permissions:
