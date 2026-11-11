@@ -14,6 +14,12 @@ jobs:
           submodules: recursive
       - name: Test rename overlay
         run: python3 -m unittest discover -s test -p 'test_branding.py' -v
+      - name: Check Hub and web syntax
+        run: |
+          python3 -m py_compile powera/hub.py
+          node --check powera/web/app.js
+      - name: Run multi-firmware control and API tests
+        run: python3 -m unittest discover -s test -p 'test_powera_hub.py' -v
       - name: Apply PowerA name and check Android settings
         run: |
           python3 scripts/brand_powera.py

@@ -1,0 +1,6 @@
+# PowerA Hub local state and secrets
+powera/config.json
+powera/*.sqlite3
+powera/*.sqlite3-*
+__pycache__/
+*.py[cod]
