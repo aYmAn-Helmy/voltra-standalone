@@ -17,19 +17,37 @@ cd voltra-standalone
 git submodule update --init --recursive
 ```
 
-### Inspect/build upstream Android app
+### Build the PowerA-branded Android application
+
+Our overlay changes the Android launcher label **and the in-app title** (both Arabic
+and English `app_name` resources) to **PowerA**. It also changes the Gradle
+project name to `PowerA` and sets a separate Android application ID
+`com.powera.app` so it can be installed alongside the original.
 
 ```bash
-cd upstream/powerk/android
-./gradlew assembleDebug
+git clone --branch PowerA --recurse-submodules https://github.com/aYmAn-Helmy/voltra-standalone.git
+cd voltra-standalone
+bash scripts/build_powera.sh
 ```
+
+APK output: `upstream/powerk/android/app/build/outputs/apk/debug/app-debug.apk`.
+To prepare without building, run `python3 scripts/brand_powera.py`. To verify
+the renamed state, run `python3 scripts/brand_powera.py --check`.
+
+The upstream source remains an external submodule and this script modifies only
+your **local working checkout**. The original Kotlin package is deliberately
+unchanged; it does not affect the visible PowerA name.
+
+**Licensing:** The upstream project did not provide a clear redistribution
+license when checked. This branch does not republish the upstream source or
+a rebranded APK. Obtain permission before distributing a derivative.
 
 ### Project identity
 
 - **New project / workstream name:** PowerA
 - **Development branch:** `PowerA`
 - **Upstream implementation:** powerk, under `upstream/powerk`, unmodified
-- **Planned application label / package:** PowerA / `com.powera.app` in our own Android implementation (not yet published)
+- **PowerA branding overlay:** display name `PowerA` and application ID `com.powera.app` (applied during local build)
 
 ### License and reuse status
 
@@ -39,7 +57,7 @@ Obtain an explicit license or written permission from the upstream owner before 
 
 ## Next development targets
 
-1. Create an independently authored **PowerA**-branded app shell (Android / Kotlin).
+1. Verify the renamed PowerA APK on Android and clarify distribution permission.
 2. Integrate the stock MTTL-W01 protocol using authorized interfaces, or interface with the upstream powerk JSON API.
 3. Optionally add Standalone firmware HTTP/SSE support alongside the stock controller.
 4. Add automated tests and a distributable APK once redistribution rights and signing are settled.

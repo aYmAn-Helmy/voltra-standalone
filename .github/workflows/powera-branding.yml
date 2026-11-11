@@ -1,0 +1,23 @@
+name: Verify PowerA Android branding
+on:
+  push:
+    branches: [PowerA]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Test rename overlay
+        run: python3 -m unittest discover -s test -p 'test_branding.py' -v
+      - name: Apply PowerA name and check Android settings
+        run: |
+          python3 scripts/brand_powera.py
+          python3 scripts/brand_powera.py --check
+          grep -F '<string name="app_name">PowerA</string>' upstream/powerk/android/app/src/main/res/values/strings.xml
+          grep -F '<string name="app_name">PowerA</string>' upstream/powerk/android/app/src/main/res/values-ar/strings.xml
+          grep -F 'applicationId = "com.powera.app"' upstream/powerk/android/app/build.gradle.kts
