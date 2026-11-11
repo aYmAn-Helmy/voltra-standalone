@@ -20,6 +20,7 @@ import time
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse, parse_qs
 from urllib.request import Request, build_opener
+from powera.scheduler import Scheduler, ScheduleError
 
 MAC_PATTERN = re.compile(r"^[0-9A-F]{12}$")
 ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{1,45}$")
@@ -201,6 +202,7 @@ class Hub:
         self.cached: dict[str, dict] = {}
         self.last_refresh = 0.0
         self.last_sample = 0.0
+        self.scheduler = Scheduler(self)
 
     def request(self, source, path, **opts):
         return self.requester(source["url"], path, token=source.get("token", ""), **opts)
@@ -547,6 +549,10 @@ class ApiHandler(BaseHTTPRequestHandler):
                 self._json({"rooms": self.hub.rooms()})
             elif path == "/api/notifications":
                 self._json({"notifications": self.hub.notifications()})
+            elif path == "/api/schedules":
+                self._json({"schedules": self.hub.scheduler.list()})
+            elif path == "/api/timers":
+                self._json({"timers": self.hub.scheduler.timers()})
             elif path == "/api/history":
                 self._json({"history": self.hub.history(params.get("deviceId", [""])[0],
                                       int(params.get("limit", ["100"])[0]))})
@@ -554,7 +560,7 @@ class ApiHandler(BaseHTTPRequestHandler):
                 self._json({"ok": True, "app": "PowerA", "apiVersion": 2, "mode": "lan"})
             else:
                 raise HubError("Not found", 404)
-        except (HubError, ValueError, OSError) as exc:
+        except (HubError, ScheduleError, ValueError, OSError) as exc:
             self._json({"error": str(exc)}, getattr(exc, "status", 400))
 
     def do_POST(self):
@@ -588,10 +594,18 @@ class ApiHandler(BaseHTTPRequestHandler):
                 res = self.hub.room_control(data.get("roomId"), data.get("on"), data.get("confirm") is True)
             elif path == "/api/notifications/read":
                 res = self.hub.notification_read(data.get("id"))
+            elif path == "/api/schedules":
+                res = self.hub.scheduler.create(data)
+            elif path == "/api/schedules/enabled":
+                res = self.hub.scheduler.set_enabled(data.get("id"), data.get("enabled"))
+            elif path == "/api/schedules/remove":
+                res = self.hub.scheduler.delete(data.get("id"))
+            elif path == "/api/timers":
+                res = self.hub.scheduler.start_return_timer(data)
             else:
                 raise HubError("Not found", 404)
             self._json(res)
-        except (HubError, json.JSONDecodeError, ValueError, TypeError) as exc:
+        except (HubError, ScheduleError, json.JSONDecodeError, ValueError, TypeError) as exc:
             self._json({"error": str(exc)}, getattr(exc, "status", 400))
 
 
@@ -617,12 +631,17 @@ def serve(argv=None):
         print("NO LOGIN / NO TOKEN — same-LAN /24 clients only. Do not port-forward or use untrusted Wi-Fi.")
         stop = threading.Event()
         def poll():
+            next_refresh = 0.0
             while not stop.is_set():
                 try:
-                    hub.refresh(force=True)
+                    now = time.monotonic()
+                    if now >= next_refresh:
+                        hub.refresh(force=True)
+                        next_refresh = now + 25
+                    hub.scheduler.tick()
                 except Exception as exc:
-                    print(f"PowerA poll warning: {exc}")
-                stop.wait(25)
+                    print(f"PowerA poll/schedule warning: {exc}")
+                stop.wait(2.0)
         thread = threading.Thread(target=poll, daemon=True)
         thread.start()
         try:
