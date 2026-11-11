@@ -173,6 +173,11 @@ def update_config(c, section, changes):
         if set(changes) != {"name"}:
             raise SyncError("Expected only name")
         after["device"] = name(changes["name"])
+    elif section == "names":
+        if set(changes) != {"device","channels"} or not isinstance(changes["channels"], list) or len(changes["channels"]) != 4:
+            raise SyncError("Expected device name and four outlet names")
+        after["device"] = name(changes["device"])
+        after["channels"] = [name(x) for x in changes["channels"]]
     elif section == "outlet-name":
         if set(changes) != {"index", "name"}:
             raise SyncError("Expected index and name")
