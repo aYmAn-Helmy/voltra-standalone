@@ -25,9 +25,9 @@ jobs:
           node-version: '22'
       - name: Verify PowerA Hub code and web frontend
         run: |
-          python3 -m py_compile powera/hub.py
+          python3 -m py_compile powera/hub.py powera/scheduler.py
           node --check powera/web/app.js
-          python3 -m unittest discover -s test -p 'test_powera_hub.py' -v
+          python3 -m unittest discover -s test -p 'test_powera_*.py' -v
       - name: Install Android SDK 35
         run: |
           echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
