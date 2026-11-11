@@ -11,7 +11,7 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "powera"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from hub import Hub
-from scheduler import Scheduler, ScheduleError, next_occurrence, parse_zone
+from powera.scheduler import Scheduler, ScheduleError, next_occurrence, parse_zone
 from test_powera_hub import FakeTransport, STOCK_ORIGIN, STAND_ORIGIN, MAC_STOCK, MAC_STAND
 
 UTC = timezone.utc
