@@ -143,6 +143,10 @@ test('settings conflict does not automatically push an outdated draft',async()=>
     input.value='اسم غير محفوظ';
     input.dispatchEvent(new x.window.Event('input'));
     x.changeDevice({device:'تغيير خارجي'});
+    // jsdom hides the document unless pretendToBeVisual is set. Simulate
+    // the settings page being visible and an app resume refresh.
+    Object.defineProperty(x.window.document,'hidden',{configurable:true,get:()=>false});
+    x.window.document.getElementById('device-settings-page').hidden=false;
     x.window.document.dispatchEvent(new x.window.Event('visibilitychange'));
     await x.settle();
     const save=[...x.window.document.querySelectorAll('.device-settings-card button')]
