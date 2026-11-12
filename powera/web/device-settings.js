@@ -258,6 +258,9 @@
   $('device-settings-back').addEventListener('click',()=>{
     document.querySelector('.tab[data-page="devices"]').click();
   });
+  document.addEventListener('visibilitychange',()=>{
+    if(selected&&model&&!document.hidden&&!$('device-settings-page').hidden)read(true);
+  });
   setInterval(()=>{
     if(selected&&model&&!document.hidden&&!$('device-settings-page').hidden)read(true);
   },20000);
