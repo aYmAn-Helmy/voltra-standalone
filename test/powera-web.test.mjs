@@ -92,14 +92,15 @@ test('favorites survive renders and can filter across firmware types', async () 
   } finally { dom.window.close(); }
 });
 
-test('power changing buttons require double tap and never submit a token', async () => {
+test('whole outlet card acts on one tap without token; nested tools do not toggle', async () => {
   const { window, dom, requests, settle } = await createApp();
   try {
-    const button = window.document.querySelector('.switch');
-    button.click();
+    const tile = window.document.querySelector('.outlet-card');
+    assert.equal(tile.getAttribute('role'),'button');
+    tile.querySelector('.tile-tools button').click(); // opens name editor only
     await settle();
     assert.equal(requests.filter(r => r.url === '/api/control').length, 0);
-    button.click();
+    tile.click();
     await settle();
     const controls = requests.filter(r => r.url === '/api/control');
     assert.equal(controls.length, 1);
