@@ -488,9 +488,56 @@
     $('weekday-wrap').hidden = !weekly;
   }
 
+  async function loadDeviceSchedules() {
+    const list = $('device-schedule-list');
+    list.replaceChildren();
+    const devices = (data.devices||[]).filter(x=>x.type==='standalone');
+    if (!devices.length) {
+      list.append(n('p','empty','مافيش مشتركات Standalone مُضافة.'));
+      return;
+    }
+    for(const device of devices) {
+      const panel=n('div','schedule-row');
+      panel.append(n('strong','',device.name+' • محفوظ على المشترك'));
+      if(!device.online){
+        panel.append(n('span','quiet','المشترك غير متصل — الجداول الداخلية مستمرة داخل الفيرموير إن كان يعمل.'));
+        list.append(panel);continue;
+      }
+      try {
+        const result=await request('/api/device-settings?deviceId='+encodeURIComponent(device.id));
+        const schedule=result.schedule;
+        const active=schedule.rules.filter(x=>(x.mode&127)!==0);
+        const details=n('div','device-source-rules');
+        if (!active.length) details.append(n('p','quiet','مافيش جداول داخلية محفوظة.'));
+        active.forEach((rule,index)=>{
+          const type=rule.mode&127;
+          const repeat=type===1?'يومي':type===2?'أسبوعي':
+            type===3?'يوم '+rule.day+' من الشهر':'آخر يوم في الشهر';
+          const clock=String(Math.floor(rule.minute/60)).padStart(2,'0')+':'+
+            String(rule.minute%60).padStart(2,'0');
+          const target=rule.channel===4?'كل المخارج':'المخرج '+(rule.channel+1);
+          details.append(n('p','quiet',(rule.mode&128?'● مفعّل':'○ متوقف')+
+            ' • '+repeat+' • '+clock+' • '+target+' • '+(rule.on?'تشغيل':'فصل')));
+        });
+        panel.append(details);
+        panel.append(n('span','quiet','UTC offset: '+schedule.timezone+' دقيقة • تزامن مباشر'));
+        const open=button('تعديل داخل المشترك','button primary',async()=>{
+          page('device-settings');
+          try {await window.PowerADeviceSettings.open(device);}
+          catch(e){toast(e.message,true);}
+        });
+        panel.append(open);
+      } catch(e){
+        panel.append(n('p','quiet','تعذر قراءة الجداول الداخلية: '+e.message));
+      }
+      list.append(panel);
+    }
+  }
+
   async function loadSchedules() {
     try {
       scheduleTargets();
+      loadDeviceSchedules();
       const [all, currentTimers] = await Promise.all([
         request('/api/schedules'), request('/api/timers')
       ]);
@@ -557,7 +604,10 @@
       for (const item of result.notifications) {
         const row = n('article', 'notification' + (item.is_read ? '' : ' unread'));
         const content = n('div');
-        content.append(n('strong', '', item.kind === 'online' ? 'عودة الاتصال' : 'انقطاع الاتصال'));
+        content.append(n('strong', '', item.kind === 'online' ? 'عودة الاتصال' :
+          item.kind === 'offline' ? 'انقطاع الاتصال' :
+          item.kind === 'settings' ? 'مزامنة إعدادات الجهاز' :
+          item.kind === 'automation' ? 'تنفيذ جدول أو مؤقت' : 'إشعار PowerA'));
         content.append(n('p', '', item.message));
         content.append(n('small', '', new Date(item.at).toLocaleString('ar-EG')));
         row.append(content);

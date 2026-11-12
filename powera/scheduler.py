@@ -104,6 +104,19 @@ class Scheduler:
         self.hub.refresh()
         if device_id not in self.hub.cached:
             raise ScheduleError("Device not found", 404)
+        device=self.hub.cached[device_id]
+        if device.get("type") == "standalone":
+            # Explicit ownership: do not schedule the same channel from both
+            # the Hub and the firmware, even when the times differ.
+            try:
+                config=self.hub.sync.read(device_id)
+            except Exception as exc:
+                raise ScheduleError("Read device schedules first; cannot verify conflict", 409) from exc
+            if config["configuration"]["timer_minutes"][outlet-1]:
+                raise ScheduleError("Firmware already has an auto-off timer for this outlet", 409)
+            for rule in config["schedule"]["rules"]:
+                if (rule["mode"] & 128) and (rule["mode"] & 127) and rule["channel"] in (4,outlet-1):
+                    raise ScheduleError("Device has an active schedule for this outlet; edit it on the device",409)
 
     def list(self):
         with self.hub.db_lock:
