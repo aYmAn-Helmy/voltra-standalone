@@ -56,26 +56,11 @@
     return result;
   }
   function doubleTap(button, doWork) {
-    let armedAt = 0, timeout;
-    button.addEventListener('click', async () => {
+    // Kept for existing call sites. v0.4 removes two-tap actions:
+    // confirmation dialogs remain for whole-strip, room, and bulk actions.
+    button.addEventListener('click', async event => {
+      event.stopPropagation();
       if (busy || button.disabled) return;
-      if (Date.now() - armedAt > 3000) {
-        armedAt = Date.now();
-        button.classList.add('armed');
-        button.setAttribute('aria-label', 'اضغط مرة ثانية خلال ثلاث ثوانٍ للتأكيد');
-        toast('اضغط مرة ثانية خلال 3 ثوانٍ لتأكيد الأمر');
-        clearTimeout(timeout);
-        timeout = setTimeout(() => {
-          armedAt = 0;
-          button.classList.remove('armed');
-          button.removeAttribute('aria-label');
-        }, 3100);
-        return;
-      }
-      clearTimeout(timeout);
-      armedAt = 0;
-      button.classList.remove('armed');
-      button.removeAttribute('aria-label');
       busy = true;
       button.disabled = true;
       try { await doWork(); }
@@ -101,6 +86,7 @@
     });
     if (name === 'rooms') loadRooms();
     if (name === 'schedules') loadSchedules();
+    if (name === 'energy') window.PowerAEnergy?.open(data.devices || []);
     if (name === 'activity') loadNotifications();
     if (name === 'settings') $('price-input').value = String(data.pricePerKwh || 0);
   }
@@ -113,6 +99,8 @@
       .catch(e => toast(e.message, true));
   }
   function powerControl(d, outlet, on) {
+    if (outlet === 0 && !window.confirm((on ? 'تشغيل' : 'فصل') +
+        ' المشترك بالكامل (' + d.name + ')؟')) return Promise.resolve();
     return request('/api/control', { deviceId: d.id, outlet, on, confirm: outlet === 0 })
       .then(async result => {
         if (!result.confirmed) throw new Error('حالة المخرج غير مؤكدة');
@@ -207,47 +195,102 @@
     onAll.disabled = !isAvailable(d);
     doubleTap(onAll, () => powerControl(d, 0, true));
     controls.append(offAll, onAll);
+    if (d.type === 'standalone') {
+      const settings = button('⚙ إعدادات الجهاز', 'button muted device-settings-launch', async () => {
+        page('device-settings');
+        try {
+          if (!window.PowerADeviceSettings) throw Error('واجهة إعدادات الجهاز مش محمّلة');
+          await window.PowerADeviceSettings.open(d);
+        } catch (err) { toast(err.message, true); }
+      });
+      controls.append(settings);
+    }
     card.append(controls);
 
     const outlets = n('div', 'outlets');
     for (const o of d.outlets) {
-      const tile = n('div', 'outlet-card' + (o.on === true ? ' on' : ''));
-      const head = n('div', 'outlet-head');
-      const label = n('span', 'outlet-name', o.name);
-      label.append(button('✎', '', () => aliasControl(d, o.index, o.name)));
-      const switchButton = button('', 'switch' + (o.on === true ? ' on' : ''));
       const known = typeof o.on === 'boolean';
-      switchButton.disabled = !isAvailable(d) || !known;
-      switchButton.setAttribute('role', 'switch');
-      switchButton.setAttribute('aria-checked', String(o.on === true));
-      switchButton.setAttribute('aria-label', (o.on ? 'فصل ' : 'تشغيل ') + o.name);
-      doubleTap(switchButton, () => powerControl(d, o.index, !o.on));
-      head.append(label, switchButton);
-      tile.append(head);
-      const watts = n('div', 'watts', number(o.powerW));
-      watts.append(n('small', '', ' W'));
-      tile.append(watts, n('div', 'reading', number(o.energyKwh, 3) + ' kWh'),
-        n('div', 'reading', o.temperatureC == null ? '—' : number(o.temperatureC) + ' °C'));
-      const timerButton = button('⏱ مؤقت رجوع', 'button muted outlet-timer');
-      timerButton.disabled = !isAvailable(d) || !known;
-      doubleTap(timerButton, async () => {
-        const minutes = window.prompt('المدة بالدقائق (من 1 إلى 1440)، وبعدها يرجع للحالة الأصلية:', '15');
-        if (minutes === null) return;
-        if (!/^[0-9]{1,4}$/.test(minutes.trim()) || Number(minutes) < 1 || Number(minutes) > 1440) {
-          toast('ادخل عدد دقائق صحيح من 1 إلى 1440', true); return;
+      const canToggle = isAvailable(d) && known;
+      const tile = n('div', 'outlet-card ' + (o.on === true ? 'on' : 'off') +
+        (canToggle ? '' : ' unavailable'));
+      tile.setAttribute('role', 'button');
+      tile.setAttribute('tabindex', canToggle ? '0' : '-1');
+      tile.setAttribute('aria-disabled', String(!canToggle));
+      tile.setAttribute('aria-label', (o.on ? 'فصل' : 'تشغيل') + ' ' + o.name +
+        ' • ' + number(o.powerW) + ' وات');
+      async function toggle() {
+        if (!canToggle || busy || tile.classList.contains('pending')) return;
+        busy = true;
+        tile.classList.add('pending');
+        tile.setAttribute('aria-busy','true');
+        const note = tile.querySelector('.outlet-state');
+        if (note) note.textContent='جاري التنفيذ…';
+        try {
+          await powerControl(d, o.index, !o.on);
+        } catch (err) {
+          toast('تعذر تأكيد الحالة: ' + err.message, true);
+          await safeRefresh();
+        } finally {
+          busy = false;
+          tile.classList.remove('pending');
+          tile.removeAttribute('aria-busy');
         }
-        if (!window.confirm('سيتم ' + (o.on ? 'فصل' : 'تشغيل') + ' ' + o.name +
-          ' الآن، ثم محاولة إرجاعه لحالته الأصلية بعد ' + minutes + ' دقيقة. تأكيد؟')) return;
-        const result = await request('/api/timers', {
-          deviceId: d.id, outlet: o.index, on: !o.on, minutes: Number(minutes), confirm: true
-        });
-        toast('المؤقت اتسجل. موعد الرجوع: ' + new Date(result.dueAt).toLocaleString('ar-EG'));
-        await refresh();
+      }
+      tile.addEventListener('click', e => {
+        if (e.target.closest('button')) return;
+        toggle();
       });
-      tile.append(timerButton);
+      tile.addEventListener('keydown', e => {
+        if (e.target !== tile || (e.key !== 'Enter' && e.key !== ' ')) return;
+        e.preventDefault();
+        toggle();
+      });
+      const head = n('div', 'outlet-head');
+      const name = n('div', 'outlet-name', o.name);
+      head.append(name, n('span','outlet-icon',o.on===true?'⏻':'⏼'));
+      const state=n('div','outlet-state', known ? (o.on ? '● يعمل' : '○ متوقف') : 'الحالة غير معروفة');
+      tile.append(head,state);
+      const watts=n('div','watts',number(o.powerW));
+      watts.append(n('small','',' W'));
+      tile.append(watts);
+      const extra=n('div','outlet-extra');
+      extra.append(n('span','reading',number(o.energyKwh,3)+' kWh'));
+      const tools=n('div','tile-tools');
+      const rename=button('✎','',e=>{
+        e.stopPropagation();aliasControl(d,o.index,o.name);
+      });
+      rename.setAttribute('aria-label','تغيير اسم '+o.name);
+      const timer=button('⏱','',async e=>{
+        e.stopPropagation();
+        if (!canToggle) return;
+        const minutes=window.prompt('المدة بالدقائق من 1 إلى 1440:', '15');
+        if(minutes===null)return;
+        if(!/^[0-9]{1,4}$/.test(minutes.trim())||Number(minutes)<1||Number(minutes)>1440){
+          toast('ادخل مدة صحيحة من 1 إلى 1440 دقيقة',true);return;
+        }
+        if (!window.confirm('تغيير ' + o.name +
+            ' ثم محاولة استعادة حالته الأصلية بعد '+minutes+' دقيقة؟')) return;
+        if(busy)return;
+        busy=true;timer.disabled=true;
+        try {
+          await request('/api/timers',{deviceId:d.id,outlet:o.index,on:!o.on,
+            minutes:Number(minutes),confirm:true});
+          toast('تم ضبط المؤقت مع التحقق من حالة الجهاز');
+          await refresh();
+        } catch(err){toast(err.message,true);}
+        finally{busy=false;timer.disabled=false;}
+      });
+      timer.setAttribute('aria-label','ضبط مؤقت رجوع '+o.name);
+      timer.disabled=!canToggle;
+      tools.append(rename,timer);
+      extra.append(tools);
+      tile.append(extra);
       outlets.append(tile);
     }
     card.append(outlets);
+    const details = n('details', 'device-details');
+    details.append(n('summary', '', 'القراءات والتفاصيل ›'));
+    card.append(details);
     const compare = n('div', 'outlet-comparison');
     compare.append(n('h4', '', 'مقارنة القدرة اللحظية'));
     const numbers = d.outlets.map(o => typeof o.powerW === 'number' && Number.isFinite(o.powerW)
@@ -263,14 +306,14 @@
       row.append(track, n('span', 'power-bar-value', number(numbers[i]) + ' W'));
       compare.append(row);
     });
-    card.append(compare);
+    details.append(compare);
     const foot = n('div', 'device-footer');
     const energy = d.energyKwh;
     const cost = typeof energy === 'number' ? energy * data.pricePerKwh : null;
     foot.append(n('span', '', 'القدرة: ' + number(d.powerW) + ' W'),
       n('span', '', 'الجهد: ' + number(d.voltageV) + ' V'),
       n('span', '', 'التكلفة التقديرية التراكمية: ' + (cost === null ? '—' : number(cost, 2) + ' ج.م')));
-    card.append(foot);
+    details.append(foot);
     const history = button('عرض سجل الاستهلاك', 'button muted');
     history.addEventListener('click', async () => {
       if (card.querySelector('.history-list')) {
@@ -286,10 +329,10 @@
           const at = row.at ? new Date(row.at).toLocaleString('ar-EG') : '';
           box.append(n('p', 'quiet', at + ' • مخرج ' + row.outlet + ' • ' + number(row.power_w) + ' W • ' + number(row.energy_kwh, 3) + ' kWh'));
         }
-        card.append(box);
+        details.append(box);
       } catch (e) { toast(e.message, true); }
     });
-    card.append(history);
+    details.append(history);
     return card;
   }
   function render() {
