@@ -61,7 +61,9 @@
     const max=Math.max(.001,...points);
     const chart=svg('svg',{viewBox:'0 0 800 260',role:'img',
       'aria-label':'رسم بياني يوضح الطاقة بالكيلوواط ساعة لكل يوم خلال الفترة المحددة'});
-    chart.append(svg('title')).textContent='استهلاك الطاقة المرصود يوميًا';
+    const chartTitle=svg('title');
+    chartTitle.textContent='استهلاك الطاقة المرصود يوميًا';
+    chart.append(chartTitle);
     for(let i=0;i<=4;i++){
       const y=22+i*48;
       chart.append(svg('line',{x1:24,x2:788,y1:y,y2:y,stroke:'currentColor',

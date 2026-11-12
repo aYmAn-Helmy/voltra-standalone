@@ -629,7 +629,8 @@ class ApiHandler(BaseHTTPRequestHandler):
             if not self._allowed_lan():
                 raise HubError("PowerA only accepts callers on the same trusted local subnet", 403)
             path = urlparse(self.path).path
-            if path in ("/", "/index.html", "/app.js", "/style.css"):
+            if path in ("/", "/index.html", "/app.js", "/style.css",
+                        "/device-settings.js", "/energy.js"):
                 self._asset("index.html" if path == "/" else path.lstrip("/"))
                 return
             params = parse_qs(urlparse(self.path).query)

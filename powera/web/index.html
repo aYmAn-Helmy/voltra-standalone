@@ -8,6 +8,8 @@
   <meta name="description" content="PowerA: لوحة موحدة للمشتركات الذكية Stock وStandalone">
   <title>PowerA — Smart Power Control</title>
   <link rel="stylesheet" href="/style.css">
+  <script src="/device-settings.js" defer></script>
+  <script src="/energy.js" defer></script>
   <script src="/app.js" defer></script>
 </head>
 <body>
@@ -28,7 +30,7 @@
       <div>
         <p class="section-kicker">YOUR SMART POWER</p>
         <h2>كل مشتركاتك، في مكان واحد.</h2>
-        <p>تحكم في مخارج مشتركات <strong>Stock</strong> و<strong>Standalone</strong> من لوحة واحدة، داخل شبكتك المحلية.</p>
+        <p>كل مشترك ذكي ومخرج في شاشة واحدة. اضغط للتشغيل أو الفصل، والتفاصيل المتقدمة وقت ما تحتاجها.</p>
         <div class="hero-actions">
           <button id="all-off" class="button muted">إيقاف جميع المشتركات</button>
           <button id="all-on" class="button primary">تشغيل جميع المشتركات</button>
@@ -46,6 +48,7 @@
 
     <div class="tabs" role="tablist" aria-label="أقسام التطبيق">
       <button class="tab active" data-page="devices" role="tab" aria-selected="true">المشتركات</button>
+      <button class="tab" data-page="energy" role="tab" aria-selected="false">الطاقة</button>
       <button class="tab" data-page="rooms" role="tab" aria-selected="false">الغرف</button>
       <button class="tab" data-page="schedules" role="tab" aria-selected="false">الجدولة</button>
       <button class="tab" data-page="activity" role="tab" aria-selected="false">الإشعارات</button>
@@ -54,10 +57,47 @@
 
     <main>
       <section id="devices-page" class="page">
-        <div class="section-title"><div><p class="section-kicker">DEVICES</p><h2>المشتركات الذكية</h2></div><span class="quiet">اضغط مرتين للتشغيل والفصل</span></div>
+        <div class="section-title"><div><p class="section-kicker">DEVICES</p><h2>المشتركات الذكية</h2></div><span class="quiet">اضغط على كارت المخرج للتشغيل أو الفصل فورًا</span></div>
         <div id="stock-hint" class="stock-hint" hidden role="note"></div>
         <div class="filters"><input id="search" type="search" placeholder="ابحث عن مشترك أو مخرج…" aria-label="بحث"><select id="type-filter" aria-label="نوع الفيرموير"><option value="all">كل الأنواع</option><option value="stock">Stock</option><option value="standalone">Standalone</option></select><select id="online-filter" aria-label="حالة الاتصال"><option value="all">كل الحالات</option><option value="online">متصل</option><option value="offline">غير متصل</option></select><button type="button" class="button muted favorite-filter" id="fav-only" aria-pressed="false">☆ المفضلة</button></div>
         <div id="device-list" class="device-list" aria-live="polite"><p class="empty">جاري البحث عن المشتركـات…</p></div>
+      </section>
+
+      <section id="energy-page" class="page" hidden>
+        <div class="section-title">
+          <div><p class="section-kicker">ENERGY HISTORY</p><h2>تاريخ استهلاك الكهرباء</h2></div>
+          <button id="energy-refresh" class="button muted" type="button">تحديث القراءة</button>
+        </div>
+        <div class="filters energy-filters">
+          <label>الفترة
+            <select id="energy-days" aria-label="فترة الطاقة">
+              <option value="7">آخر 7 أيام</option>
+              <option value="30" selected>آخر 30 يوم</option>
+              <option value="90">آخر 90 يوم</option>
+            </select>
+          </label>
+          <label>المشترك<select id="energy-device" aria-label="تصفية مشترك"></select></label>
+          <label>التوقيت
+            <select id="energy-timezone">
+              <option value="Africa/Cairo">القاهرة</option>
+              <option value="Asia/Riyadh">الرياض</option>
+              <option value="UTC">UTC</option>
+            </select>
+          </label>
+        </div>
+        <div id="energy-dashboard" aria-live="polite"><p class="empty">اختار الفترة لعرض السجل.</p></div>
+      </section>
+
+      <section id="device-settings-page" class="page" hidden>
+        <div class="section-title">
+          <div><p class="section-kicker">DEVICE SYNC</p><h2 id="device-settings-title">إعدادات المشترك</h2></div>
+          <div class="hero-actions">
+            <button type="button" class="button muted" id="device-settings-back">رجوع للمشتركات</button>
+            <button type="button" class="button primary" id="device-settings-refresh">قراءة من الجهاز ↻</button>
+          </div>
+        </div>
+        <div id="device-settings-status" class="settings-status">متصل بالجهاز…</div>
+        <div id="device-settings-container"><p class="empty">افتح إعدادات أي مشترك Standalone من كارت الجهاز.</p></div>
       </section>
 
       <section id="rooms-page" class="page" hidden>
@@ -110,7 +150,7 @@
 
       <section id="activity-page" class="page" hidden>
         <div class="section-title"><div><p class="section-kicker">INBOX</p><h2>مركز الإشعارات</h2></div><button class="button muted" id="notifications-refresh">تحديث</button></div>
-        <p class="quiet">إشعارات اتصال وانقطاع الأجهزة. يتم الاحتفاظ بها محليًا داخل PowerA Hub.</p>
+        <p class="quiet">اتصال الأجهزة وتغييرات إعدادات الـStandalone وتنفيذ الجداول، محفوظة محليًا.</p>
         <div id="notifications" class="notification-list"></div>
       </section>
 
@@ -130,7 +170,7 @@
         <div class="card stack">
           <h3>معلومات النظام</h3>
           <p class="quiet">التحكم في المخارج يتم عبر طلب حالة صريحة مع تأكيد القراءة. لن يُعاد إرسال أمر مشكوك في نتيجته تلقائيًا.</p>
-          <p class="quiet">الحسابات والمشاركة والجدولة المتقدمة والإشعارات الفورية ودعم iOS والقدرات المرتبطة بالفيرموير ضمن مراحل تطوير لاحقة.</p>
+          <p class="quiet">المزامنة في الاتجاهين للـStandalone، وسجل طاقة 90 يوم، والجداول الداخلية والخارجية متاحة في الأقسام الخاصة بها. الحسابات والمشاركة مؤجلة، وPower Recovery غير مدعوم في واجهة فيرموير Standalone الحالية.</p>
         </div>
       </section>
     </main>
