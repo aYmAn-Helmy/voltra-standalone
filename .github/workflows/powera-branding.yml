@@ -20,11 +20,13 @@ jobs:
       - name: Install web UI test dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
       - name: Test Android and web UX
-        run: node --test test/powera-web.test.mjs
+        run: node --test test/powera-web.test.mjs test/powera-v04-ui.test.mjs
       - name: Check Hub and web syntax
         run: |
           python3 -m py_compile powera/hub.py powera/scheduler.py powera/stock_bridge.py powera/standalone_sync.py powera/energy_history.py
           node --check powera/web/app.js
+          node --check powera/web/device-settings.js
+          node --check powera/web/energy.js
       - name: Run multi-firmware control and API tests
         run: python3 -m unittest discover -s test -p 'test_powera_*.py' -v
       - name: Apply PowerA name and check Android settings
