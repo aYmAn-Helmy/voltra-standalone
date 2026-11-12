@@ -55,9 +55,9 @@
     if (!response.ok) throw new Error(result.error || 'فشل الاتصال');
     return result;
   }
-  function doubleTap(button, doWork) {
-    // Kept for existing call sites. v0.4 removes two-tap actions:
-    // confirmation dialogs remain for whole-strip, room, and bulk actions.
+  function runConfirmedAction(button, doWork) {
+    // Exactly one click. Destructive bulk and whole-strip actions
+    // explicitly ask for a separate confirmation dialog.
     button.addEventListener('click', async event => {
       event.stopPropagation();
       if (busy || button.disabled) return;
@@ -190,10 +190,10 @@
     const controls = n('div', 'device-actions');
     const offAll = button('فصل المشترك', 'button danger');
     offAll.disabled = !isAvailable(d);
-    doubleTap(offAll, () => powerControl(d, 0, false));
+    runConfirmedAction(offAll, () => powerControl(d, 0, false));
     const onAll = button('تشغيل المشترك', 'button muted');
     onAll.disabled = !isAvailable(d);
-    doubleTap(onAll, () => powerControl(d, 0, true));
+    runConfirmedAction(onAll, () => powerControl(d, 0, true));
     controls.append(offAll, onAll);
     if (d.type === 'standalone') {
       const settings = button('⚙ إعدادات الجهاز', 'button muted device-settings-launch', async () => {
@@ -412,7 +412,7 @@
         for (const state of [false, true]) {
           const b = button(state ? 'تشغيل الغرفة' : 'فصل الغرفة', 'button ' + (state ? 'primary' : 'muted'));
           b.disabled = room.members.length === 0;
-          doubleTap(b, async () => {
+          runConfirmedAction(b, async () => {
             if (!window.confirm('تأكيد ' + (state ? 'تشغيل' : 'فصل') + ' مخارج غرفة ' + room.name + '؟')) return;
             const result = await request('/api/rooms/control',
               { roomId: room.id, on: state, confirm: true });
@@ -679,6 +679,10 @@
   $('online-filter').addEventListener('change', render);
   $('refresh').addEventListener('click', safeRefresh);
   $('notifications-refresh').addEventListener('click', loadNotifications);
+  document.addEventListener('powera:settings-saved', async () => {
+    await safeRefresh();
+    if (activePage === 'schedules') loadDeviceSchedules();
+  });
   $('theme').addEventListener('click', () => {
     const light = document.documentElement.dataset.theme !== 'light';
     document.documentElement.dataset.theme = light ? 'light' : 'dark';
@@ -707,7 +711,7 @@
   });
   for (const state of [false, true]) {
     const b = $(state ? 'all-on' : 'all-off');
-    doubleTap(b, async () => {
+    runConfirmedAction(b, async () => {
       if (!window.confirm('متأكد من ' + (state ? 'تشغيل' : 'فصل') +
           ' كل المشتركات المتصلة؟ الأمر قد يؤثر على الأجهزة الكهربائية.')) return;
       const result = await request('/api/control-all', { on: state, confirm: true });

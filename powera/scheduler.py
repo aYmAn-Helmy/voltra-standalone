@@ -176,6 +176,9 @@ class Scheduler:
                 raise ScheduleError("Schedule not found", 404)
             when = None
             if enabled:
+                # Re-enable only when an on-device schedule/timer is not already
+                # owning the physical output.
+                self._known_target(row["device_id"], row["outlet"])
                 when = next_occurrence(row["repeat"], row["local_date"], row["clock"],
                                        parse_zone(row["timezone"]), json.loads(row["weekdays"]), now)
                 if when is None:
@@ -282,6 +285,10 @@ class Scheduler:
                                  f"جدول {row['id']} فات موعده ولم يتم تشغيله تلقائيًا")
                 continue
             try:
+                # Previously saved Hub jobs can conflict with a schedule added
+                # directly on the device afterwards. Check immediately before
+                # the write, not just when the Hub job was first created.
+                self._known_target(row["device_id"], row["outlet"])
                 result = self.hub.control(row["device_id"], row["outlet"], bool(row["state"]))
                 outcome = "confirmed" if result.get("confirmed") else "unconfirmed"
             except Exception as exc:
@@ -314,6 +321,7 @@ class Scheduler:
                     device = next((d for d in latest["devices"] if d["id"] == row["device_id"]), None)
                     if device is None or not device["controlAvailable"]:
                         raise ScheduleError("Device not ready; no blind retry")
+                    self._known_target(row["device_id"], row["outlet"])
                     actual = device["outlets"][row["outlet"] - 1]["on"]
                     if actual is not bool(row["expected_state"]):
                         raise ScheduleError("Outlet state changed since timer started; manual review required")

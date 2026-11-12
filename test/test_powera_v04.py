@@ -126,6 +126,27 @@ class FirmwareSyncTests(unittest.TestCase):
         self.assertEqual(len(self.fake.posts),1)
         self.assertEqual(self.fake.current["device"],"المكتب")
 
+    def test_server_schedule_rechecks_firmware_ownership_at_execution(self):
+        # A Hub job was created before the user later made a device schedule.
+        # The Hub must SKIP the conflicting relay write rather than execute
+        # both schedulers and let the outcome become unpredictable.
+        original=datetime(2026,11,12,12,0,tzinfo=UTC)
+        saved=self.hub.scheduler.create({
+            "deviceId":DID,"outlet":1,"on":True,"repeat":"once",
+            "clock":"14:01","date":"2026-11-12","timezone":"Africa/Cairo",
+            "confirm":True,
+        },now=original)
+        used={"timezone":120,"rules":[
+            {"minute":60,"mode":129,"day":0,"channel":0,"on":1},
+            *[dict(EMPTY) for _ in range(7)]
+        ]}
+        self.fake.current["schedule_hex"]=schedule_pack(used)
+        self.hub.scheduler.tick(original+timedelta(minutes=1,seconds=3))
+        result=next(x for x in self.hub.scheduler.list() if x["id"]==saved["id"])
+        self.assertIn("error:",result["lastResult"])
+        self.assertIn("active schedule",result["lastResult"])
+        self.assertEqual(self.fake.posts,[])
+
     def test_reject_timer_overlap_with_existing_device_schedule(self):
         existing=self.sync.read(DID)
         used={"timezone":120,"rules":[
