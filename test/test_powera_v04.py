@@ -230,5 +230,72 @@ class EnergyHistoryTests(unittest.TestCase):
         self.assertFalse(report["summary"]["complete"])
 
 
+class PowerAHttpV04Tests(unittest.TestCase):
+    """Real local HTTP boundary over the same Hub used by Android WebView."""
+    def setUp(self):
+        from http.server import ThreadingHTTPServer
+        import threading
+        self.tmp=tempfile.TemporaryDirectory()
+        self.fake=MockFirmware()
+        self.hub=Hub({"sources":[{"id":"stand","type":"standalone",
+                                  "url":"http://192.168.1.55","mac":MAC}]},
+                    db_path=str(Path(self.tmp.name)/"powera.db"),requester=self.fake)
+        from powera.hub import ApiHandler
+        class Handler(ApiHandler):
+            pass
+        Handler.hub=self.hub
+        Handler.frontend=Path(__file__).resolve().parents[1]/"powera"/"web"
+        Handler.log_message=lambda *args:None
+        self.server=ThreadingHTTPServer(("127.0.0.1",0),Handler)
+        self.origin="http://127.0.0.1:"+str(self.server.server_port)
+        self.thread=threading.Thread(target=self.server.serve_forever,daemon=True)
+        self.thread.start()
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join(3)
+        self.hub.db.close()
+        self.tmp.cleanup()
+
+    def test_http_get_and_post_device_settings_and_energy(self):
+        from urllib.request import Request,urlopen
+        from urllib.parse import urlencode
+        fresh=json.load(urlopen(self.origin+"/api/device-settings?"+
+                           urlencode({"deviceId":DID}),timeout=4))
+        self.assertEqual(fresh["configuration"]["device"],"المكتب")
+        self.assertEqual(fresh["source"],"device")
+        self.assertFalse(fresh["capabilities"]["powerRecovery"])
+        self.assertNotIn("wifi_password",fresh["configuration"])
+        self.fake._after={**self.fake.current,"device":"PowerA"}
+        payload={"deviceId":DID,"section":"device-name",
+                 "changes":{"name":"PowerA"},"revision":fresh["revision"]}
+        with patch("powera.standalone_sync.time.sleep"):
+            req=Request(self.origin+"/api/device-settings",method="POST",
+                data=json.dumps(payload).encode(),headers={
+                  "Content-Type":"application/json","X-PowerA-Client":"PowerA",
+                  "Origin":self.origin})
+            answer=json.load(urlopen(req,timeout=4))
+        self.assertTrue(answer["confirmed"])
+        self.assertEqual(answer["configuration"]["device"],"PowerA")
+        self.hub.energy.ingest([{"id":DID,"online":True,
+             "outlets":[{"index":1,"powerW":90,"energyKwh":1}]}])
+        report=json.load(urlopen(self.origin+"/api/energy/report?days=90",
+                                timeout=4))
+        self.assertEqual(report["days"],90)
+        self.assertEqual(len(report["daily"]),90)
+
+    def test_http_rejects_cross_origin_powera_writes(self):
+        from urllib.request import Request,urlopen
+        from urllib.error import HTTPError
+        req=Request(self.origin+"/api/device-settings",method="POST",
+            data=b'{"section":"names"}',headers={
+              "Content-Type":"application/json","X-PowerA-Client":"PowerA",
+              "Origin":"http://evil.example"})
+        with self.assertRaises(HTTPError) as denied:
+            urlopen(req,timeout=4)
+        self.assertEqual(denied.exception.code,403)
+
+
 if __name__=="__main__":
     unittest.main()
