@@ -1,4 +1,4 @@
-# PowerA Requirements — 11 Nov 2026
+# PowerA Requirements — v0.4 Preview, 12 Nov 2026
 
 This is the user's feature backlog transcribed into engineering acceptance criteria.
 **Status:** ✅ Hub/Web now = implemented in the original PowerA Hub/web preview,
@@ -14,11 +14,11 @@ This is the user's feature backlog transcribed into engineering acceptance crite
 | D3 | All strips ON/OFF | ✅ Hub/Web | Online strips only; partial failures reported; no rollback |
 | D4 | Per-outlet ON/OFF state | ✅ Hub/Web | Unknown state never shown as OFF |
 | D5 | Online/offline | ✅ Hub/Web | Native Stock TCP connect/disconnect; Standalone polls and offline cache |
-| D6 | Rename strip | 🟡 Partial | Local PowerA display alias only; no firmware rename |
-| D7 | Rename outlet | 🟡 Partial | Local PowerA display alias only |
+| D6 | Rename strip | ✅ Hub/Web | Stock local alias; Standalone device flash name synced bidirectionally |
+| D7 | Rename outlet | ✅ Hub/Web | Stock local alias; Standalone firmware-persistent names |
 | D8 | Android control | ✅ Phase 2 Preview | Original Android shell autodiscovers and embeds the unified Hub web UI |
 | D9 | Web dashboard | ✅ Hub/Web | Branded Arabic responsive page |
-| D10 | Double-Tap Guard | ✅ Hub/Web | 3-second confirm window for web power controls |
+| D10 | Double-Tap Guard | ✅ Superseded | User requested one-tap entire outlet card; whole-strip/room/bulk actions ask confirmation |
 
 ## 2 — Timers & scheduling (8)
 
@@ -33,7 +33,15 @@ This is the user's feature backlog transcribed into engineering acceptance crite
 | T7 | Usage-based automation | ⏳ Planned | Verified fresh telemetry, hysteresis and audit |
 | T8 | Time zone-aware execution | ✅ Hub/Web | IANA timezone, DST gap skipped and fold=0 |
 
-The new Hub scheduler is **server-based**, not stored in firmware. The Hub must stay online: a missed deadline will not replay after a crash, blackout or network outage. Stock and Standalone device-native scheduling features differ. No firmware-level safety claim is implied.
+**Two distinct scheduling engines:** Standalone firmware schedules (8 slots, direct bidirectional sync, fixed UTC-offset device clock, stay active without the Hub) and Hub-owned jobs (SQLite, IANA timezone, Hub must remain online). Active overlap is rejected before scheduling and at execution; missed deadlines are not replayed. Device firmware schedules only supported when firmware exposes v7 config.
+
+## Bidirectional Standalone settings (v0.4)
+
+- ✅ Read existing device name, four outlet names, eight firmware schedule rules, per-outlet firmware timers, protection thresholds, physical button lock and nonsecret MQTT settings.
+- ✅ Explicit writes check a revision of the fresh device config, write the firmware v7 binary format with Wi-Fi/MQTT secrets preserved, and verify persistent readback after one POST. External changes are never overwritten automatically.
+- ✅ Live device changes become visible in PowerA after polling/reopening, with an inbox entry.
+- ⚠️ Firmware versions without the documented v7 config are not assumed compatible. Real hardware test pending.
+- ⚠️ Power recovery mode selection and staggered start have no verified firmware API and are unavailable.
 
 ## 3 — Energy monitoring (8)
 
@@ -42,23 +50,23 @@ The new Hub scheduler is **server-based**, not stored in firmware. The Hub must 
 | E1 | Watt per outlet | ✅ Hub/Web | When supplied by device |
 | E2 | Total strip wattage | ✅ Hub/Web | Device readings |
 | E3 | kWh | ✅ Hub/Web | Cumulative counter when present |
-| E4 | History | ✅ Hub/Web | Local polling snapshots up to 30 days and per-outlet SVG trend chart; export pending |
+| E4 | History | ✅ Hub/Web | Per-outlet 92-day local ledger and 7/30/90-day measured kWh graphs; no backfill |
 | E5 | Outlet comparison | ✅ Hub/Web | Visual wattage bars per outlet |
 | E6 | kWh rate | ✅ Hub/Web | Local EGP price setting |
-| E7 | Estimated cost | ✅ Hub/Web | Counter × price; not a bill; missing readings unknown |
+| E7 | Estimated cost | ✅ Hub/Web | Sum of verified meter-delta and labelled watt-integral estimate × configured EGP rate; not a bill |
 | E8 | Voltage and current | ✅ Hub/Web | Only if supplied |
 
 ## 4 — Electrical protection (8)
 
 | # | Requirement | Status | Notes |
 | --- | --- | --- | --- |
-| P1 | Overload monitoring | ⚠️ Depends | Expose hardware flags; not in Hub yet |
-| P2 | Heat warning | ⏳ Planned | Needs device thresholds and alert engine |
-| P3 | Cutoff on device power threshold | ⚠️ Depends | Firmware-local protection preferred over server |
+| P1 | Overload monitoring | 🟡 Partial | Read firmware protection settings; actual firmware trips not yet alert-integrated |
+| P2 | Heat warning | 🟡 Partial | Standalone firmware temperature cutoff threshold editable; proactive app alert pending |
+| P3 | Cutoff on device power threshold | 🟡 Partial | Firmware's total-power safety threshold editable; not arbitrary per-outlet protection |
 | P4 | Upper/lower power rules | ⏳ Planned | Need threshold, hysteresis, stale-data guard |
 | P5 | Overvoltage | ⚠️ Depends | Sensor/firmware support; never claim hub software is hardware safety |
 | P6 | Undervoltage | ⚠️ Depends | Same |
-| P7 | Overcurrent | ⚠️ Depends | Same |
+| P7 | Overcurrent | 🟡 Partial | Firmware total-current limit editable, actual physical overcurrent validation pending |
 | P8 | Protection notification | ⏳ Planned | Native firmware flags, inbox/push integration |
 
 **Safety:** PowerA and its networking are not a safety-rated protective
@@ -79,10 +87,10 @@ relay. Use appropriate breakers/RCD and rated hardware protection.
 
 | # | Requirement | Status | Notes |
 | --- | --- | --- | --- |
-| N1 | Device disconnected | ✅ Hub/Web | Poll-detected only |
+| N1 | Device disconnected | ✅ Hub/Web | Hub polls Standalone and detects native Stock TCP disconnects |
 | N2 | Device reconnected | ✅ Hub/Web | Poll-detected only |
 | N3 | Electrical fault | ⏳ Planned | Verified firmware warning states |
-| N4 | Automation executed | ✅ Hub/Web | Scheduled-action and return-timer results in inbox |
+| N4 | Automation executed | ✅ Hub/Web | Scheduled/return-timer results; device settings change notifications |
 | N5 | Physical button change | ⏳ Planned | Need event origin; polling alone can't prove origin |
 | N6 | Notification inbox | ✅ Hub/Web | Local 100 newest |
 | N7 | Read/unread | ✅ Hub/Web | Local SQLite |
@@ -93,25 +101,25 @@ relay. Use appropriate breakers/RCD and rated hardware protection.
 | --- | --- | --- | --- |
 | A1 | Phone + password login | ⏳ Planned | Requires secure identity service |
 | A2 | Google/Apple login | ⏳ Planned | OAuth/OIDC app IDs and provider setup |
-| A3 | Arabic + English | 🟡 Partial | Arabic web; upstream Android has both |
+| A3 | Arabic + English | 🟡 Partial | Arabic PowerA RTL web/Android shell; complete English translation still missing |
 | A4 | RTL | ✅ Hub/Web | Arabic RTL |
 | A5 | Dark/light | ✅ Hub/Web | Local preference |
 | A6 | User profile | ⏳ Planned | Database/account model |
 | A7 | Logout/session management | ⏳ Deferred | Accounts intentionally postponed; no token or login |
 | A8 | Delete account | ⏳ Planned | Requires accounts, retention and deletion policy |
 | A9 | Secure session storage | ⏳ Deferred | No login, credentials or sessions in LAN-only preview |
-| A10 | Provision Wi-Fi | ⚠️ Depends | Upstream stock provision and Standalone setup exist separately; not in Hub |
+| A10 | Provision Wi-Fi | 🟡 Partial | Native stock SoftAP CLI pairing; Standalone Wi-Fi setup still through device web UI |
 | A11 | iPhone home screen widget | ⚠️ Depends | Requires separate iOS app and WidgetKit |
 
 ## 8 — Power recovery (5)
 
 | # | Requirement | Status | Notes |
 | --- | --- | --- | --- |
-| PR1 | Per-outlet restoration setting | ⚠️ Depends | Check stock/Standalone firmware persistence interfaces |
-| PR2 | Always ON | ⚠️ Depends | Device firmware must reliably implement at startup |
-| PR3 | Always OFF | ⚠️ Depends | Same |
-| PR4 | Restore Last State | ⚠️ Depends | State persistence and failure modes |
-| PR5 | Staggered startup delays | ⚠️ Depends | Hardware/firmware startup sequence preferred |
+| PR1 | Per-outlet restoration setting | ⚠️ Firmware | Not exposed by reviewed Standalone v2.1.1 editable HTTP API; read-only status only |
+| PR2 | Always ON | ⚠️ Firmware | No verified firmware-local editable option in current API |
+| PR3 | Always OFF | ⚠️ Firmware | No verified firmware-local editable option in current API |
+| PR4 | Restore Last State | ⚠️ Firmware | Firmware persists relay logic state but no selectable mode verified |
+| PR5 | Staggered startup delays | ⚠️ Firmware | No native API; not simulated by server after reconnect |
 
 Power recovery must work even when the phone and Hub are offline. Server-side
 resending after reconnection **does not fulfill this requirement**, and can
@@ -122,11 +130,10 @@ physical validation and explicit user consent.
 
 1. **P0 – Hub integration**: Stock + Standalone normalized with unit tests,
    identity verification, safe control and failure reporting. ✅ Prototype.
-2. **P1 – Android & richer UI**: Original Android Hub client, rooms, verified commands, saved favorites and energy charts. ✅ Preview. English localization planned.
+2. **P1 – Android & simpler UI**: Single-tap full outlet cards, subtle pending state, expandable details, mobile bottom bar, saved favorites and 90-day energy charts. ✅ Automated UI preview; physical mobile usability validation pending.
 3. **P2 – Scheduler/alerts**: Durable once/weekly jobs, IANA zones, reversible timers and execution inbox implemented in local Hub. Energy-based rules and push notifications pending.
 4. **P3 – Accounts/family**: Deferred by project request. No sign-in/token/sharing in this preview.
-5. **P4 – Firmware and iOS**: Distinct verified support for recovery modes,
-   firmware protection settings, native phone notifications and iOS WidgetKit.
+5. **P4 – Firmware and iOS**: Standalone config read/edit/verify added in v0.4 (source-based simulation only). Native recovery modes, push, iOS WidgetKit depend on separate hardware/platform support and are outside this release.
 
 ### Engineering criteria
 
