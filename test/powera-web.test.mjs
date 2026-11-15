@@ -5,6 +5,7 @@ import { JSDOM } from 'jsdom';
 
 const html = await readFile(new URL('../powera/web/index.html', import.meta.url), 'utf8');
 const script = await readFile(new URL('../powera/web/app.js', import.meta.url), 'utf8');
+const energyScript = await readFile(new URL('../powera/web/energy.js', import.meta.url), 'utf8');
 const MAC_STOCK = 'stock:AABBCCDDEEFF', MAC_STAND = 'standalone:001122334455';
 const device = (id, type, name) => ({
   id, type, name, mac: id.split(':')[1], online: true, controlAvailable: true,
@@ -15,7 +16,7 @@ const device = (id, type, name) => ({
   }))
 });
 
-async function createApp() {
+async function createApp({ emptyEnergy = false, energyUnavailable = false } = {}) {
   const dom = new JSDOM(html, { url: 'http://192.168.1.2:8098/', runScripts: 'outside-only' });
   const { window } = dom;
   const requests = [];
@@ -42,6 +43,17 @@ async function createApp() {
       result = method === 'GET' ? { schedules: [] } : { id: 1, nextRunAt: '2026-11-13T18:00:00Z' };
     } else if (url === '/api/timers') {
       result = method === 'GET' ? { timers: [] } : { ok: true, dueAt: '2026-11-11T19:00:00Z' };
+    } else if (String(url).startsWith('/api/energy/report')) {
+      if (energyUnavailable) return { ok: false, status: 503, json: async () => ({error: 'الـHub غير متاح'}) };
+      result = emptyEnergy
+        ? { summary: { observedKwh: 0, estimatedCostEgp: 0, samples: 0, gaps: 0 }, daily: [] }
+        : {
+          summary: { observedKwh: 1.25, estimatedCostEgp: 3.50, samples: 50, gaps: 2 },
+          daily: [7,6,5,4,3,2,1].map((d,i) => ({
+            date: '2026-11-' + String(d+7).padStart(2,'0'),
+            samples: i === 3 ? 0 : i + 2, observedKwh: i === 3 ? 0 : (i+1)*.03
+          }))
+        };
     } else if (String(url).startsWith('/api/history')) {
       result = { history: [1, 2, 3, 4].flatMap(outlet =>
         [1, 2, 3].map(i => ({
@@ -55,6 +67,7 @@ async function createApp() {
     }
     return { ok: true, status: 200, json: async () => result };
   };
+  window.eval(energyScript);
   window.eval(script);
   const settle = async () => {
     for (let i = 0; i < 6; i++) await new Promise(resolve => setImmediate(resolve));
@@ -153,5 +166,43 @@ test('saved historical readings render offline SVG charts, not fictitious sample
     assert.ok(graph);
     assert.equal(graph.querySelectorAll('path').length, 4);
     assert.ok(graph.getAttribute('aria-label').includes('الوات'));
+  } finally { dom.window.close(); }
+});
+
+test('Work home redesign loads genuine seven-day energy and separates missing days', async () => {
+  const { window, dom, requests, settle } = await createApp();
+  try {
+    await settle();
+    const doc = window.document;
+    assert.ok(doc.querySelector('#home-energy-preview'), 'Redesigned home energy preview exists');
+    const calls = requests.filter(x => x.url.startsWith('/api/energy/report?'));
+    assert.equal(calls.length, 1);
+    assert.match(calls[0].url, /days=7/);
+    assert.equal(doc.querySelector('#home-energy-total').textContent, '1.25');
+    assert.match(doc.querySelector('#home-energy-cost').textContent, /3.5/);
+    const chart = doc.querySelector('#home-energy-chart svg');
+    assert.ok(chart, 'Seven-day SVG chart rendered');
+    assert.equal(chart.querySelectorAll('circle').length, 6, 'Missing day is not plotted as a measurement');
+    assert.equal(chart.querySelectorAll('path').length, 2, 'No line across the missing readings');
+    assert.match(doc.querySelector('#home-energy-note').textContent, /الفترات الناقصة/);
+  } finally { dom.window.close(); }
+});
+
+test('Work home redesign never invents energy when there is no saved history', async () => {
+  const { window, dom, settle } = await createApp({ emptyEnergy: true });
+  try {
+    await settle();
+    assert.equal(window.document.querySelectorAll('#home-energy-chart svg').length, 0);
+    assert.match(window.document.querySelector('#home-energy-note').textContent, /لا توجد قراءات/);
+  } finally { dom.window.close(); }
+});
+
+test('Work home redesign surfaces energy server errors without disrupting outlet controls', async () => {
+  const { window, dom, settle } = await createApp({ energyUnavailable: true });
+  try {
+    await settle();
+    assert.equal(window.document.querySelector('#home-energy-total').textContent, '—');
+    assert.match(window.document.querySelector('#home-energy-note').textContent, /تعذر تحميل/);
+    assert.equal(window.document.querySelectorAll('.outlet-card').length, 8);
   } finally { dom.window.close(); }
 });
