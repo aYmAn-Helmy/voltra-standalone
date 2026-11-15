@@ -262,3 +262,48 @@ html[data-theme=light] .stock-hint{background:#fff3dc;color:#704c0b;border-color
   .energy-outlet-row{grid-template-columns:minmax(70px,2fr) minmax(50px,2fr) 80px;gap:7px;font-size:10px}
   footer{padding-bottom:26px}
 }
+
+
+/* Selected mobile home design: live control first, verified energy history next. */
+.welcome.dashboard-welcome{display:flex;align-items:center;justify-content:space-between;gap:20px;
+  min-height:0;padding:18px 22px;border-radius:20px;background:linear-gradient(115deg,#10213d,#162a49);
+  border-color:#263f60;box-shadow:none}
+.dashboard-welcome .welcome-copy{max-width:640px}
+.dashboard-welcome h2{font-size:clamp(22px,3vw,28px);margin:0 0 4px}
+.dashboard-welcome .welcome-copy>p:not(.section-kicker){margin:0;color:#b1c4d8;font-size:13px}
+.dashboard-welcome .hero-actions{flex:none}
+.overview{grid-template-columns:minmax(1.25fr,1.5fr) repeat(3,minmax(0,1fr));align-items:stretch}
+.metric{border-radius:17px}
+.metric-current{background:linear-gradient(135deg,#1b3151,#142840);border-color:#385777}
+.metric-current strong{font-size:clamp(24px,3.2vw,34px);color:#f4fbff}
+.home-energy-preview{margin:0 0 23px;padding:17px 20px 13px;border:1px solid var(--stroke);
+  border-radius:20px;background:var(--panel);display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,.75fr);
+  grid-template-areas:"head graph" "note graph";gap:4px 20px;align-items:center}
+.energy-preview-head{grid-area:head;display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.energy-preview-head .section-kicker{margin:0 0 1px}
+.energy-preview-head h2{font-size:19px;margin:0}
+.energy-preview-totals{display:flex;flex-direction:column;align-items:flex-end;white-space:nowrap}
+.energy-preview-totals strong{font-size:25px;line-height:1.2;color:var(--mint);direction:ltr}
+.energy-preview-totals span,.energy-preview-totals small{color:var(--muted);font-size:10px}
+.home-energy-chart{grid-area:graph;min-width:0;color:var(--muted)}
+.home-energy-chart svg{display:block;width:100%;height:auto;max-height:115px}
+.home-energy-note{grid-area:note;margin:4px 0 0;color:var(--muted);font-size:10px}
+html[data-theme=light] .welcome.dashboard-welcome{background:linear-gradient(115deg,#edf4ff,#e6f5f2);border-color:#c9d8e8}
+html[data-theme=light] .dashboard-welcome .welcome-copy>p:not(.section-kicker){color:#52677f}
+html[data-theme=light] .metric-current strong{color:#17283d}
+html[data-theme=light] .energy-preview-totals strong{color:#147960}
+@media(max-width:900px){.overview{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:650px){
+  .dashboard-welcome{align-items:flex-start!important;flex-direction:column}
+  .dashboard-welcome .hero-actions{width:100%}
+  .dashboard-welcome .hero-actions .button{flex:1;min-height:44px}
+  .overview{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:12px 0}
+  .metric{padding:12px;border-radius:15px}
+  .metric-current{grid-column:span 2}
+  .home-energy-preview{grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "graph" "note";
+    padding:15px;margin-bottom:19px;gap:10px}
+  .energy-preview-head{align-items:center}
+  .energy-preview-head h2{font-size:17px}
+  .energy-preview-totals strong{font-size:22px}
+  .home-energy-chart svg{max-height:145px}
+}

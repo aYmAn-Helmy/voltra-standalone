@@ -26,24 +26,39 @@
       </div>
     </header>
 
-    <section class="welcome">
-      <div>
-        <p class="section-kicker">YOUR SMART POWER</p>
-        <h2>كل مشتركاتك، في مكان واحد.</h2>
-        <p>كل مشترك ذكي ومخرج في شاشة واحدة. اضغط للتشغيل أو الفصل، والتفاصيل المتقدمة وقت ما تحتاجها.</p>
-        <div class="hero-actions">
-          <button id="all-off" class="button muted">إيقاف جميع المشتركات</button>
-          <button id="all-on" class="button primary">تشغيل جميع المشتركات</button>
-        </div>
+    <section class="welcome dashboard-welcome">
+      <div class="welcome-copy">
+        <p class="section-kicker">POWERA • تحكم منزلي</p>
+        <h2>كل الطاقة تحت سيطرتك.</h2>
+        <p>شغّل كل مخرج بضغطة واحدة، وتابع استهلاك الكهرباء من القراءات المتاحة.</p>
       </div>
-      <div class="hero-art" aria-hidden="true"><span>ϟ</span></div>
+      <div class="hero-actions">
+        <button id="all-off" class="button muted">إيقاف الكل</button>
+        <button id="all-on" class="button primary">تشغيل الكل</button>
+      </div>
     </section>
 
     <section class="overview" aria-label="ملخص الطاقة">
+      <div class="metric metric-current"><span>الاستهلاك اللحظي</span><strong id="power-total">— W</strong><small>للأجهزة المتصلة الآن</small></div>
       <div class="metric"><span>المشتركات</span><strong id="device-total">—</strong><small id="device-online">— متصل</small></div>
       <div class="metric"><span>المخارج الشغالة</span><strong id="outlets-on">—</strong><small>من كل الأجهزة</small></div>
-      <div class="metric"><span>الاستهلاك اللحظي</span><strong id="power-total">— W</strong><small>للأجهزة المتصلة</small></div>
       <div class="metric"><span>سعر الكيلوواط/ساعة</span><strong id="price-total">—</strong><small>جنيه مصري</small></div>
+    </section>
+
+    <section id="home-energy-preview" class="home-energy-preview" aria-labelledby="home-energy-title">
+      <div class="energy-preview-head">
+        <div>
+          <p class="section-kicker">استهلاك الكهرباء</p>
+          <h2 id="home-energy-title">آخر ٧ أيام</h2>
+        </div>
+        <div class="energy-preview-totals">
+          <strong id="home-energy-total">—</strong>
+          <span>kWh مرصودة</span>
+          <small id="home-energy-cost">التكلفة التقديرية —</small>
+        </div>
+      </div>
+      <div id="home-energy-chart" class="home-energy-chart" role="img" aria-label="رسم قراءات الطاقة اليومية خلال آخر سبعة أيام"></div>
+      <p id="home-energy-note" class="home-energy-note" aria-live="polite">جارٍ تحميل قراءات الطاقة المسجلة…</p>
     </section>
 
     <div class="tabs" role="tablist" aria-label="أقسام التطبيق">

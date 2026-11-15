@@ -380,6 +380,7 @@
     const result = await request('/api/status');
     data = result;
     render();
+    window.PowerAEnergy?.refreshHomePreview();
     if (activePage === 'schedules') scheduleTargets();
   }
   async function safeRefresh() {

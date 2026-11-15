@@ -7,9 +7,72 @@
   const fmt=(v,d=2)=>typeof v==='number'&&Number.isFinite(v)?
     v.toLocaleString('en-US',{maximumFractionDigits:d}):'—';
   const NS='http://www.w3.org/2000/svg';
-  let devices=[],loading=false;
+  let devices=[],loading=false,homeLoading=false,homeLoadedAt=0;
   function svg(tag,attrs={}){const n=document.createElementNS(NS,tag);
     Object.entries(attrs).forEach(([k,v])=>n.setAttribute(k,String(v)));return n;}
+  async function refreshHomePreview(force=false){
+    const root=$('home-energy-preview');
+    if(!root||homeLoading||(!force&&Date.now()-homeLoadedAt<120000))return;
+    homeLoading=true;
+    try{
+      const query=new URLSearchParams({days:'7',timezone:'Africa/Cairo'});
+      const response=await fetch('/api/energy/report?'+query.toString(),{cache:'no-store'});
+      const report=await response.json();
+      if(!response.ok)throw Error(report.error||'تعذر قراءة الطاقة');
+      renderHomePreview(report);
+      homeLoadedAt=Date.now();
+    }catch(error){
+      $('home-energy-chart').replaceChildren();
+      $('home-energy-total').textContent='—';
+      $('home-energy-cost').textContent='التكلفة التقديرية غير متاحة';
+      $('home-energy-note').textContent='تعذر تحميل سجل الطاقة. يمكنك المحاولة مجددًا من زر التحديث.';
+    }finally{homeLoading=false;}
+  }
+  function renderHomePreview(report){
+    const total=report?.summary?.observedKwh;
+    $('home-energy-total').textContent=fmt(total,2);
+    const cost=report?.summary?.estimatedCostEgp;
+    $('home-energy-cost').textContent=typeof cost==='number'&&Number.isFinite(cost)
+      ?'التكلفة التقديرية '+fmt(cost,2)+' ج.م':'التكلفة التقديرية غير متاحة';
+    const values=Array.isArray(report?.daily)?report.daily.slice(-7):[];
+    const chart=$('home-energy-chart');
+    chart.replaceChildren();
+    if(!values.length||!Number.isFinite(total)||report?.summary?.samples===0){
+      $('home-energy-note').textContent='لا توجد قراءات محفوظة للفترة بعد. يبدأ التسجيل من تشغيل PowerA Hub.';
+      return;
+    }
+    const width=680,base=110,top=14,gap=width/values.length;
+    const graph=svg('svg',{viewBox:'0 0 720 152',role:'img','aria-label':'استهلاك الكهرباء المرصود لكل يوم خلال آخر سبعة أيام'});
+    const title=svg('title');title.textContent='قراءات الطاقة اليومية المرصودة';graph.append(title);
+    [0,1,2,3].forEach(i=>graph.append(svg('line',{x1:20,x2:700,y1:top+i*31,y2:top+i*31,stroke:'currentColor','stroke-opacity':'.12'})));
+    const valid=values.filter(item=>Number(item.samples)>0);
+    const maximum=Math.max(.001,...valid.map(item=>Number.isFinite(item.observedKwh)?item.observedKwh:0));
+    let segment='';
+    values.forEach((item,index)=>{
+      const value=Number.isFinite(item.observedKwh)?Math.max(0,item.observedKwh):0;
+      const x=20+index*gap+gap/2;
+      if(Number(item.samples)>0){
+        const y=base-value/maximum*82;
+        segment+=(segment?' L':'M')+x.toFixed(1)+','+y.toFixed(1);
+        const point=svg('circle',{cx:x,cy:y,r:index===values.length-1?4:3,fill:'#4ce1b0'});
+        const tip=svg('title');tip.textContent=item.date+' — '+fmt(value,3)+' kWh';point.append(tip);graph.append(point);
+      }else if(segment){
+        graph.append(svg('path',{d:segment,fill:'none',stroke:'#4ce1b0','stroke-width':3,'stroke-linecap':'round','stroke-linejoin':'round'}));
+        segment='';
+      }
+      const date=new Date(item.date+'T12:00:00Z');
+      const label=Number.isNaN(date.valueOf())?'':date.toLocaleDateString('ar-EG',{weekday:'short',timeZone:'Africa/Cairo'});
+      const textNode=svg('text',{x,y:138,'text-anchor':'middle',fill:'currentColor','font-size':'12'});
+      textNode.textContent=label;graph.append(textNode);
+    });
+    if(segment)graph.append(svg('path',{d:segment,fill:'none',stroke:'#4ce1b0','stroke-width':3,'stroke-linecap':'round','stroke-linejoin':'round'}));
+    graph.append(svg('line',{x1:20,x2:700,y1:base,y2:base,stroke:'currentColor','stroke-opacity':'.25'}));
+    chart.append(graph);
+    const gaps=Number(report?.summary?.gaps||0);
+    $('home-energy-note').textContent=gaps
+      ?'قراءات متاحة فقط؛ الفترات الناقصة لا تعني صفر استهلاك.'
+      :'الرسم يعرض استهلاك الأيام المقاسة فقط.';
+  }
   async function load(){
     if(loading)return;
     const panel=$('energy-dashboard');
@@ -116,5 +179,5 @@
   $('energy-device').addEventListener('change',load);
   $('energy-timezone').addEventListener('change',load);
   $('energy-refresh').addEventListener('click',load);
-  window.PowerAEnergy={open(list){updateDevices(list);load();},refresh:load};
+  window.PowerAEnergy={open(list){updateDevices(list);load();},refresh:load,refreshHomePreview};
 })();
