@@ -60,17 +60,17 @@ jobs:
           test -s "$apk"
           unzip -Z1 "$apk" | grep -Fx classes.dex
           mkdir -p powera/dist
-          cp "$apk" powera/dist/PowerA-v0.4.0-preview.apk
-          ls -lh powera/dist/PowerA-v0.4.0-preview.apk
+          cp "$apk" powera/dist/PowerA-v0.4.1-preview.apk
+          ls -lh powera/dist/PowerA-v0.4.1-preview.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: PowerA-Android-v0.4.0
-          path: powera/dist/PowerA-v0.4.0-preview.apk
+          name: PowerA-Android-v0.4.1
+          path: powera/dist/PowerA-v0.4.1-preview.apk
           retention-days: 90
       - name: Upload PowerA source and QA reference
         uses: actions/upload-artifact@v4
         with:
-          name: PowerA-v0.4.0-Hub-and-Web
+          name: PowerA-v0.4.1-Hub-and-Web
           path: |
             powera/*.py
             powera/config.example.json
@@ -83,11 +83,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag=powera-preview-v0.4.0
-          apk=powera/dist/PowerA-v0.4.0-preview.apk
+          tag=powera-preview-v0.4.1
+          apk=powera/dist/PowerA-v0.4.1-preview.apk
           if ! gh release view "$tag" >/dev/null 2>&1; then
             gh release create "$tag" --prerelease --target "$GITHUB_SHA" \
-              --title 'PowerA Android 0.4.0 Preview' \
-              --notes 'PowerA v0.4: one-tap full outlet cards; two-way Standalone v7 device-owned schedule, protection, timer, name sync with verified readback; per-outlet 7/30/90-day metered energy and gap tracking; native Stock TCP 10086. No login or tokens; LAN only; restart updated Python Hub on same Wi-Fi, Android app is only a dashboard. Hardware verification pending; unsupported firmware Power Recovery remains unavailable. See README on PowerA branch.'
+              --title 'PowerA Android 0.4.1 Preview' \
+              --notes 'PowerA v0.4.1 Work UI update: streamlined Arabic RTL dark home, live wattage-first summary, seven-day measured kWh chart with missing-day handling, single-tap outlet controls; Stock TCP and Standalone two-way sync; separate 7/30/90-day energy views. Android wrapper loads the web dashboard from a separately updated PowerA Hub, so update BOTH the Hub and APK. Local trusted Wi-Fi only, no login/token. Physical device and long-running Android usability checks still pending.'
           fi
           gh release upload "$tag" "$apk" --clobber

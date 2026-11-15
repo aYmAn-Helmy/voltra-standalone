@@ -1,4 +1,4 @@
-# PowerA v0.4.0 Preview — Unified Smart Power
+# PowerA v0.4.1 Preview — Unified Smart Power
 
 An original local-first controller for **LG U+ / MTTL-W01** with the
 **stock firmware TCP 10086 receiver** and **Standalone HTTP API** in a single
@@ -12,7 +12,15 @@ and in the independent Android wrapper.
 > (temporarily by design). Anyone on the permitted private LAN can operate
 > the outlets.
 
-## Changes in v0.4
+## Changes in v0.4.1
+
+### Work UI refresh (15 Nov 2026)
+
+- Home screen prioritizes live power in watts and shows a compact seven-day
+  kWh timeline and EGP estimate using actual saved observations.
+- The chart leaves unmeasured days unconnected instead of displaying them
+  as real zero-use measurements; empty/error states stay visible.
+- RTL Arabic layout, simplified header and one-tap outlet cards remain intact.
 
 ### Simple daily controls
 
@@ -127,7 +135,7 @@ powerk process if it owns that port. See the
 can be added by IP + MAC without a stock TCP session.
 
 Web UI: `http://<HUB-LAN-IP>:8098`, or install the
-[PowerA 0.4.0 Preview APK](https://github.com/aYmAn-Helmy/voltra-standalone/releases/tag/powera-preview-v0.4.0).
+[PowerA 0.4.1 Preview APK](https://github.com/aYmAn-Helmy/voltra-standalone/releases/tag/powera-preview-v0.4.1).
 It scans the same trusted Wi-Fi /24 for the Hub; enter the Hub IP manually
 when discovery is blocked. Updating **only the APK does not update the
 server**: the new settings, UI and history require updating the Python Hub
